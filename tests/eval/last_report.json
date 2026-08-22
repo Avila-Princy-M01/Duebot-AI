@@ -1,5 +1,5 @@
 {
-  "run_id": "502de450-428f-4639-9b0a-7bba885d941d",
+  "run_id": "518056b6-a168-4fe6-91fb-9421747e21d4",
   "as_of": "2026-08-21",
   "n_test": 71,
   "strategies": {
@@ -30,23 +30,23 @@
       "avg_days_to_recovery": 11.036363636363637,
       "promise_kept_rate": 0.2857142857142857,
       "false_escalation_rate": 0.0,
-      "total_contacts_sent": 53,
-      "recovery_per_contact": 132000.77358490566
+      "total_contacts_sent": 64,
+      "recovery_per_contact": 109313.140625
     },
     "duebot": {
       "eval_set_size": 71,
-      "recovered_count": 66,
-      "recovered_value": "8577897.0",
+      "recovered_count": 55,
+      "recovered_value": "6996041.0",
       "total_value": "8975701.0",
-      "recovery_rate": 0.9556798961997509,
-      "recovery_30d": 0.9248829701435018,
-      "recovery_60d": 0.9474171432403998,
-      "recovery_90d": 0.9575890507047862,
-      "avg_days_to_recovery": 7.136363636363637,
+      "recovery_rate": 0.779442296484698,
+      "recovery_30d": 0.748645370428449,
+      "recovery_60d": 0.7711795435253469,
+      "recovery_90d": 0.7813514509897332,
+      "avg_days_to_recovery": 8.618181818181819,
       "promise_kept_rate": 0.2857142857142857,
       "false_escalation_rate": 0.0,
       "total_contacts_sent": 33,
-      "recovery_per_contact": 259936.27272727274
+      "recovery_per_contact": 212001.24242424243
     }
   }
 }

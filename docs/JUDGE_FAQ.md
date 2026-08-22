@@ -3,11 +3,12 @@
 1. **Isn’t this Razorpay Active Revenue Recovery?**
    Active Revenue Recovery retries failed recurring *debits*. DueBot automates unpaid B2B *invoices* (receivables), extracts payment promise dates over conversational channels, and escalates when promises break.
 
-2. **Why does DueBot outperform naive cadence?**
-   * **Higher Total Recovery (95.6% vs 77.9%)**: Instant Razorpay payment links over WhatsApp convert late-paying buyers who would not self-cure.
-   * **+96.9% Higher Capital Efficiency (₹ 2,59,936 vs ₹ 1,32,001 per contact)**: DueBot recovers nearly double the cash value per message sent by delivering friction-free payment links at the exact right moment.
-   * **Faster Resolution (7.1 vs 11.0 days)**: Frictionless payment link delivery accelerates cash collection by 1.5x.
-   * **37.7% Fewer Contacts (33 vs 53)**: Hard policy cap (max 3/week) and abstention on disputed invoices prevent buyer spam.
+2. **How is the baseline comparison evaluated fairly?**
+   All 3 evaluation strategies (`no_agent`, `naive_cadence`, `duebot`) share **one neutral, identical buyer response model** (`shared_should_recover` in `baselines.py`). Recovery outcomes are driven strictly by ground-truth generator labels, not arm-specific rules:
+   * **Equal Recovery Rate (77.9% / ₹ 69.96L)**: Both DueBot and naive cadence reach the nudge-responsive buyers.
+   * **+93.9% Higher Capital Efficiency (₹ 2,12,001 vs ₹ 1,09,313 per contact)**: DueBot achieves identical recovery with **48.4% fewer contacts** (33 vs 64).
+   * **Faster Resolution (8.6 vs 11.0 days)**: Friction-free WhatsApp payment links accelerate cash collection by 2.4 days.
+   * **Dispute Abstention**: Naive cadence blindly contacts disputed invoices 4 times, whereas DueBot routes them to `HUMAN_REVIEW` with 0 contacts.
 
 3. **What happens on disputed or ambiguous replies?**
    `intent=dispute` or low-confidence replies (`confidence < 0.7`) immediately halt automated nudging and route the invoice to `HUMAN_REVIEW` (0 contacts sent, 0% false escalations).

@@ -99,17 +99,17 @@ The Next.js 14 frontend provides a real-time merchant control center:
 
 Executed via `python scripts/run_eval.py` against the real generator split — zero fixture stubs.
 
-| Strategy | Recovery Rate | Total Recovered (INR) | Avg Days to Recovery | Contacts Sent | Recovery / Contact (Efficiency) | False Escalations |
+| Strategy | Recovery Rate | Total Recovered (INR) | Avg Days to Recovery | Contacts Sent | Recovery / Contact (Capital Efficiency) | Disputed Invoices |
 |----------|---------------|-----------------------|----------------------|---------------|---------------------------------|-------------------|
-| `no_agent` (Self-cure only) | 73.5% | ₹ 66,00,741 | 11.3 days | 0 | ₹ 0 / contact | 0% |
-| `naive_cadence` (Every 7 days) | 77.9% | ₹ 69,96,041 | 11.0 days | 53 | ₹ 1,32,001 / contact | 0% |
-| **`duebot` (Policy-aware agent)** | **95.6%** | **₹ 85,77,897** | **7.1 days** | **33** | **₹ 2,59,936 / contact** | **0%** |
+| `no_agent` (Self-cure only) | 73.5% | ₹ 66,00,741 | 11.3 days | 0 | ₹ 0 / contact | 0 contacts |
+| `naive_cadence` (Every 7 days) | 77.9% | ₹ 69,96,041 | 11.0 days | 64 | ₹ 1,09,313 / contact | Blindly escalates |
+| **`duebot` (Policy-aware agent)** | **77.9%** | **₹ 69,96,041** | **8.6 days** | **33** | **₹ 2,12,001 / contact** | **Routes to `HUMAN_REVIEW` (0 contacts)** |
 
 ### Key Takeaways:
-1. **+96.9% Higher Capital Efficiency (₹ 2.6L vs ₹ 1.3L / contact)**: DueBot recovers nearly double the cash value per message sent by targeting friction-free Razorpay payment links.
-2. **Superior Total Recovery (95.6% vs 77.9%)**: Converts late-paying buyers who wouldn't self-cure without intervention.
-3. **Faster Resolution (7.1 days vs 11.0 days)**: Instant link delivery accelerates cash flow into the merchant's account.
-4. **37.7% Fewer Contacts (33 vs 53)**: Hard policy cap (max 3/week) and abstention on disputed invoices prevent customer churn.
+1. **Shared Neutral Model**: All 3 strategies run against the exact same ground-truth buyer response model (`shared_should_recover`).
+2. **+93.9% Higher Capital Efficiency (₹ 2.1L vs ₹ 1.1L / contact)**: DueBot achieves the exact same total recovery as naive cadence with **48.4% fewer contacts** (33 vs 64).
+3. **Faster Cash Resolution (8.6 vs 11.0 days)**: Instant Razorpay WhatsApp payment links accelerate resolution by 2.4 days.
+4. **Dispute Safety & Zero Spam**: DueBot abstains on disputed invoices (routing to `HUMAN_REVIEW` with 0 contacts) and enforces a hard contact cap (max 3/week).
 
 ## Design decisions (why this, not that)
 
