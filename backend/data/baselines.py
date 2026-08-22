@@ -73,7 +73,7 @@ def shared_should_recover(invoice: SnapshotInvoice, contacts_sent: int) -> bool:
     1. Organic self-cure: Buyer was going to pay anyway without intervention.
     2. Kept promise: Buyer made a commitment and kept it when nudged.
     3. Nudge conversion: Non-disputed, non-broken-promise buyer facing mild overdue
-       status (< 45 days) clears their balance after receiving payment link reminders (>= 2 contacts).
+       status (< 45 days) clears balance after receiving reminders (>= 2 contacts).
 
     NO strategy receives custom conversion rules.
     """
@@ -83,9 +83,7 @@ def shared_should_recover(invoice: SnapshotInvoice, contacts_sent: int) -> bool:
         return True
     if contacts_sent > 0 and invoice.promise_outcome == "kept":
         return True
-    if contacts_sent >= 2 and invoice.promise_outcome != "broken" and invoice.days_overdue < 45:
-        return True
-    return False
+    return contacts_sent >= 2 and invoice.promise_outcome != "broken" and invoice.days_overdue < 45
 
 
 def simulate_no_agent(invoices: list[SnapshotInvoice], as_of: date) -> list[SnapshotInvoice]:
