@@ -1,17 +1,17 @@
 import { AuditLog } from "../../components/audit/AuditLog";
 import { listAudit } from "../../lib/api";
 
-export async function AuditPage() {
+export default async function AuditPage() {
   const payload = await listAudit();
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Append-only audit log</h1>
-      <p className="text-sm text-slate-400">
-        There is no edit or delete. Every state transition is one row with a human-readable reason.
-      </p>
+      <div>
+        <h1 className="text-2xl font-extrabold tracking-tight text-white">Append-Only Policy Audit Log</h1>
+        <p className="text-xs text-slate-400">
+          Immutable audit record of every DueBot state transition, WhatsApp nudge, and human review routing.
+        </p>
+      </div>
       <AuditLog rows={payload.data} />
     </div>
   );
 }
-
-export default AuditPage;
