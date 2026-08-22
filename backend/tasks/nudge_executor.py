@@ -112,6 +112,17 @@ async def execute_nudge(
             )
         raise PolicyBlockedError(decision.reason)
 
+    existing_pending = await session.execute(
+        select(Interaction).where(
+            Interaction.invoice_id == invoice.invoice_id,
+            Interaction.direction == "outbound",
+            Interaction.delivery_status == "pending",
+        )
+    )
+    if existing_pending.scalar_one_or_none() is not None:
+        logger.info("nudge_idempotent_skip_pending", invoice_id=invoice.invoice_id)
+        return False, decision, body
+
     attempt = await next_attempt_number(session, invoice.invoice_id)
     existing = await session.execute(
         select(Interaction).where(

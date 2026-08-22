@@ -13,7 +13,7 @@ from typing import Any
 from anthropic.types import ToolParam
 
 from backend.engine.policy import ReplyIntent
-from backend.exceptions import ConfigurationError
+from backend.exceptions import ConfigurationError, IntegrationError
 from backend.llm.client import AnthropicClient
 from backend.llm.prompts import reply_parsing
 from backend.llm.types import ParsedIntent
@@ -156,6 +156,6 @@ class ReplyParser:
                 tools=[EXTRACT_REPLY_INTENT_TOOL],
                 tool_choice_name="extract_reply_intent",
             )
-        except ConfigurationError:
+        except (ConfigurationError, IntegrationError):
             return fallback_intent(reply_text, as_of=as_of)
         return parsed_intent_from_tool_input(payload)

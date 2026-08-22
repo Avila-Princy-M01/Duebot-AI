@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from typing import Protocol
 
@@ -106,7 +106,18 @@ def count_outbound_in_window(
 ) -> int:
     """Count outbound contacts in the trailing window."""
     cutoff = as_of - timedelta(days=window_days)
-    return sum(1 for item in history if item.direction == "outbound" and item.sent_at >= cutoff)
+
+    def _to_utc(dt_val: datetime) -> datetime:
+        if dt_val.tzinfo is None:
+            return dt_val.replace(tzinfo=UTC)
+        return dt_val.astimezone(UTC)
+
+    utc_cutoff = _to_utc(cutoff)
+    return sum(
+        1
+        for item in history
+        if item.direction == "outbound" and _to_utc(item.sent_at) >= utc_cutoff
+    )
 
 
 def can_contact(
