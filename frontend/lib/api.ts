@@ -43,6 +43,10 @@ export async function getInvoice(id: string): Promise<Envelope<InvoiceDetail>> {
   return request<Envelope<InvoiceDetail>>(`/api/invoices/${id}`);
 }
 
+export async function listBuyers(): Promise<Envelope<BuyerRow[]>> {
+  return request<Envelope<BuyerRow[]>>("/api/buyers?limit=100");
+}
+
 export async function getBuyer(id: string): Promise<Envelope<BuyerRow & { invoices: Array<{ invoice_id: string; invoice_number: string; total_amount: string; status: string; state: string; days_overdue: number }> }>> {
   return request(`/api/buyers/${id}`);
 }
