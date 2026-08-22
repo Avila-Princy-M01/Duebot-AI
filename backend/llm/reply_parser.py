@@ -187,13 +187,22 @@ class ReplyParser:
     def __init__(self, client: AnthropicClient) -> None:
         self._client = client
 
-    async def parse(self, reply_text: str, *, as_of: date | None = None) -> ParsedIntent:
-        """Classify ``reply_text``.
+    async def parse_with_meta(
+        self,
+        reply_text: str,
+        *,
+        as_of: date | None = None,
+        allow_fallback: bool = True,
+    ) -> tuple[ParsedIntent, bool]:
+        """Classify ``reply_text`` and return tuple of (ParsedIntent, is_fallback).
 
-        The buyer text is placed only in the user turn, never in the system prompt.
+        If ``allow_fallback`` is False and the API call fails or is unconfigured,
+        this method raises ConfigurationError / IntegrationError.
         """
         if not self._client.configured:
-            return fallback_intent(reply_text, as_of=as_of)
+            if not allow_fallback:
+                raise ConfigurationError("LLM API key is not configured")
+            return fallback_intent(reply_text, as_of=as_of), True
         today = as_of.isoformat() if as_of is not None else "unknown"
         user = f"Today's date (ISO): {today}\n\nBuyer reply (untrusted):\n{reply_text}"
         try:
@@ -203,6 +212,22 @@ class ReplyParser:
                 tools=[EXTRACT_REPLY_INTENT_TOOL],
                 tool_choice_name="extract_reply_intent",
             )
-        except (ConfigurationError, IntegrationError):
-            return fallback_intent(reply_text, as_of=as_of)
-        return parsed_intent_from_tool_input(payload)
+        except (ConfigurationError, IntegrationError) as err:
+            if not allow_fallback:
+                raise err
+            return fallback_intent(reply_text, as_of=as_of), True
+        return parsed_intent_from_tool_input(payload), False
+
+    async def parse(
+        self,
+        reply_text: str,
+        *,
+        as_of: date | None = None,
+        allow_fallback: bool = True,
+    ) -> ParsedIntent:
+        """Classify ``reply_text``.
+
+        The buyer text is placed only in the user turn, never in the system prompt.
+        """
+        result, _ = await self.parse_with_meta(reply_text, as_of=as_of, allow_fallback=allow_fallback)
+        return result

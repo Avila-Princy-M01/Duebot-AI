@@ -26,10 +26,13 @@ jobs:
           pip install -e ".[dev]"
 
       - name: Run Ruff (Linter)
-        run: ruff check backend tests
+        run: ruff check backend tests scripts
 
       - name: Run Mypy (Strict Type Checker)
         run: mypy --strict backend
 
       - name: Run Pytest (Unit, Integration & Eval Tests)
         run: pytest tests/unit tests/integration tests/eval -v
+
+      - name: Run Offline Fallback Classifier Evaluation Benchmark
+        run: python scripts/eval_reply_parser.py --mode=fallback

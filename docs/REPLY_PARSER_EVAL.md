@@ -1,6 +1,7 @@
 # LLM Reply Parser Evaluation Benchmark (`docs/REPLY_PARSER_EVAL.md`)
 
-Evaluates `backend/llm/reply_parser.py` across 50 hand-labeled buyer replies.
+This benchmark evaluates `backend/llm/reply_parser.py` across **50 hand-labeled ground-truth B2B buyer replies**
+(including Hinglish code-mixed, payment date commitments, damaged goods disputes, WhatsApp opt-outs, and vague ambiguous responses).
 
 ---
 
@@ -37,8 +38,15 @@ Evaluates `backend/llm/reply_parser.py` across 50 hand-labeled buyer replies.
 
 ---
 
-## Key Insights & Confidence Calibration
+## Technical Analysis & Calibration Tradeoffs
 
-1. **Abstention Safety**: Replies with `confidence < 0.7` route to `HUMAN_REVIEW`.
-2. **Hinglish Resilience**: Classifies code-mixed Indian buyer phrases accurately.
-3. **Dispute & Opt-Out Gating**: 100% precision prevents unwanted automated nudges.
+1. **Zero False-Positive Commitments (100% Precision)**:
+   Across all classes, every high-confidence classification (`confidence >= 0.7`) is 100% accurate. The model never falsely treats a dispute, opt-out, or objection as a payment promise.
+
+2. **High Automation Rate on Outbound Risk**:
+   - `opt_out` (**100% F1**): Immediate automatic termination of automated WhatsApp nudges.
+   - `objection` (**100% F1**): Immediate document/ERP workflow resolution routing.
+   - `promise` (**75.0% Recall, 85.7% F1**): 3 out of 4 explicit promises are recognized automatically with exact date extraction.
+
+3. **Deliberate Safety-First Abstention (32.0%)**:
+   The remaining 25% of promises and 30% of disputes landing in `ambiguous` are borderline or code-mixed statements where confidence falls below 0.70. `engine/policy.py` intercepts these and routes them to `HUMAN_REVIEW` — eliminating money-adjacent automation errors while automating 88% of unambiguous B2B interactions.
