@@ -31,6 +31,9 @@ class Settings(BaseSettings):
     anthropic_api_key: str = Field(default="")
     anthropic_model: str = Field(default="claude-sonnet-4-20250514")
 
+    gemini_api_key: str = Field(default="")
+    gemini_model: str = Field(default="gemini-3-flash-preview")
+
     razorpay_key_id: str = Field(default="")
     razorpay_key_secret: str = Field(default="")
 
@@ -63,6 +66,11 @@ class Settings(BaseSettings):
     def anthropic_configured(self) -> bool:
         """True when a Claude API key is present."""
         return bool(self.anthropic_api_key)
+
+    @property
+    def gemini_configured(self) -> bool:
+        """True when a Gemini API key is present."""
+        return bool(self.gemini_api_key)
 
 
 @lru_cache
