@@ -285,7 +285,14 @@ def generate_markdown_report(data: dict[str, Any]) -> str:
    uncertain texts fallback to `AMBIGUOUS` (confidence 0.20) for human review.
 """
 
+    if is_llm:
+        reproduce_cmd = "python scripts/eval_reply_parser.py --mode=llm"
+    else:
+        reproduce_cmd = "python scripts/eval_reply_parser.py --mode=fallback"
     md = f"""# {title_suffix}
+
+> [!NOTE]
+> Generated on 2026-08-22 using `{engine_name}`. Reproduce with: `{reproduce_cmd}`
 
 Evaluates intent classification performance on 50 held-out B2B buyer reply test cases.
 

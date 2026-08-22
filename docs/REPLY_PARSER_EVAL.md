@@ -1,7 +1,8 @@
 # LLM Reply Parser Evaluation Benchmark (`docs/REPLY_PARSER_EVAL.md`)
 
-This benchmark evaluates `backend/llm/reply_parser.py` across **50 hand-labeled ground-truth B2B buyer replies**
-(including Hinglish code-mixed, payment date commitments, damaged goods disputes, WhatsApp opt-outs, and vague ambiguous responses).
+> [!NOTE]
+> Generated locally on 2026-08-22 using `Real LLM API (gemini-3-flash-preview)` (0% fallback calls).
+> Reproduce with: `python scripts/eval_reply_parser.py --mode=llm`
 
 ---
 

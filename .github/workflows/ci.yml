@@ -5,6 +5,13 @@ on:
     branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
+  workflow_dispatch:
+    inputs:
+      run_live_eval:
+        description: 'Run live LLM evaluation benchmark against API'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   test:
@@ -36,3 +43,10 @@ jobs:
 
       - name: Run Offline Fallback Classifier Evaluation Benchmark
         run: python scripts/eval_reply_parser.py --mode=fallback
+
+      - name: Run Live LLM Reply Parser Benchmark (if API key available)
+        if: ${{ secrets.GEMINI_API_KEY != '' || secrets.ANTHROPIC_API_KEY != '' || inputs.run_live_eval }}
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python scripts/eval_reply_parser.py --mode=llm
