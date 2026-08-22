@@ -21,7 +21,7 @@ MAX_RETRIES = 2
 TIMEOUT_SECONDS = 20.0
 
 
-def _clean_schema_for_gemini(schema: dict[str, Any]) -> dict[str, Any]:
+def _clean_schema_for_gemini(schema: Any) -> dict[str, Any]:
     """Convert Anthropic JSON schema types to OpenAPI/Gemini upper-case types."""
     out: dict[str, Any] = {}
     for k, v in schema.items():
@@ -153,7 +153,11 @@ class AnthropicClient:
             async with httpx.AsyncClient(timeout=TIMEOUT_SECONDS) as client:
                 resp = await client.post(url, json=payload)
                 if resp.status_code != 200:
-                    logger.error("gemini_error_response", status_code=resp.status_code, text=resp.text)
+                    logger.error(
+                        "gemini_error_response",
+                        status_code=resp.status_code,
+                        text=resp.text,
+                    )
                 resp.raise_for_status()
                 data = resp.json()
         except Exception as exc:
