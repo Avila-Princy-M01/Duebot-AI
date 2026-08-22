@@ -51,6 +51,14 @@ async def seed_from_generator(
         messages=len(gen.messages),
     )
 
+    from sqlalchemy import delete
+
+    # Clear existing synthetic rows for an idempotent seed operation
+    await session.execute(delete(Interaction))
+    await session.execute(delete(Invoice))
+    await session.execute(delete(Buyer))
+    await session.execute(delete(Merchant))
+
     inbound_by_invoice: set[str] = {m.invoice_id for m in gen.messages if m.direction == "inbound"}
 
     for merch in gen.merchants:

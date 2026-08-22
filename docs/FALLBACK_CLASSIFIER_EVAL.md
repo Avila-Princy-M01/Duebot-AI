@@ -1,5 +1,8 @@
 # Offline Fallback Benchmark (`docs/FALLBACK_CLASSIFIER_EVAL.md`)
 
+> [!NOTE]
+> Generated on 2026-08-22 using `Offline Keyword Fallback Classifier`. Reproduce with: `python scripts/eval_reply_parser.py --mode=fallback`
+
 Evaluates intent classification performance on 50 held-out B2B buyer reply test cases.
 
 ---
