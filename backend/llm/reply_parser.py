@@ -76,13 +76,25 @@ def parsed_intent_from_tool_input(payload: dict[str, Any]) -> ParsedIntent:
 
 
 def fallback_intent(reply_text: str, *, as_of: date | None = None) -> ParsedIntent:
-    """Offline classifier used when ANTHROPIC_API_KEY is unset.
+    """Offline classifier used when API key is unset or rate limited.
 
     This inspects *buyer* text (untrusted input), never model prose. Live
     deployments with a key always go through tool-use instead.
     """
     lowered = reply_text.lower()
-    if any(token in lowered for token in ("stop messaging", "do not send", "remove this number")):
+    if any(
+        token in lowered
+        for token in (
+            "stop messaging",
+            "do not contact",
+            "remove",
+            "unsubscribe",
+            "mat bhejna",
+            "block",
+            "don't send",
+            "stop spamming",
+        )
+    ):
         return ParsedIntent(
             intent=ReplyIntent.OPT_OUT,
             confidence=0.95,
@@ -90,7 +102,17 @@ def fallback_intent(reply_text: str, *, as_of: date | None = None) -> ParsedInte
         )
     if any(
         token in lowered
-        for token in ("wrong", "never received", "duplicate", "mismatch", "already paid")
+        for token in (
+            "wrong",
+            "never received",
+            "duplicate",
+            "mismatch",
+            "already paid",
+            "galat bill",
+            "higher than",
+            "never ordered",
+            "discount",
+        )
     ):
         return ParsedIntent(
             intent=ReplyIntent.DISPUTE,
@@ -99,24 +121,40 @@ def fallback_intent(reply_text: str, *, as_of: date | None = None) -> ParsedInte
         )
     if any(
         token in lowered
-        for token in ("soon", "will see", "get back", "don't worry", "in process", "dekhta")
-    ):
-        return ParsedIntent(
-            intent=ReplyIntent.AMBIGUOUS,
-            confidence=0.31,
-            reasoning="No date or commitment stated — abstain.",
+        for token in (
+            "resend",
+            "waiting on",
+            "cash flow",
+            "bank account",
+            "audit leave",
+            "courier",
+            "erp system",
+            "month end",
+            "gst breakdown",
+            "out of office",
+            "two more weeks",
         )
-    if any(
-        token in lowered for token in ("two more weeks", "resend", "last working day", "waiting on")
     ):
         return ParsedIntent(
             intent=ReplyIntent.OBJECTION,
-            confidence=0.82,
-            reasoning="Buyer requested a delay or a document fix, not a pay-by date.",
+            confidence=0.85,
+            reasoning="Buyer requested a document fix, info, or process delay.",
         )
     if any(
         token in lowered
-        for token in ("will pay", "bhej dunga", "clearing this", "settle", "transfer by")
+        for token in (
+            "clear payment",
+            "bhej dunga",
+            "will transfer",
+            "will pay",
+            "rtgs",
+            "settle",
+            "pakka",
+            "cheque",
+            "neft",
+            "releasing",
+            "clearing this",
+        )
     ):
         promised = as_of or date.today()
         from datetime import timedelta
@@ -126,6 +164,15 @@ def fallback_intent(reply_text: str, *, as_of: date | None = None) -> ParsedInte
             promised_date=promised + timedelta(days=5),
             confidence=0.91,
             reasoning="Buyer stated an explicit payment commitment.",
+        )
+    if any(
+        token in lowered
+        for token in ("soon", "will see", "get back", "don't worry", "in process", "dekhta", "noted")
+    ):
+        return ParsedIntent(
+            intent=ReplyIntent.AMBIGUOUS,
+            confidence=0.35,
+            reasoning="No date or commitment stated — abstain.",
         )
     return ParsedIntent(
         intent=ReplyIntent.AMBIGUOUS,
