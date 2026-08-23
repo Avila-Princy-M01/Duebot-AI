@@ -78,19 +78,33 @@ export function InvoiceTableInteractive({ initialInvoices }: InvoiceTableInterac
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-semibold text-slate-400">Status:</span>
-          {["ALL", "overdue", "promise_active", "disputed", "human_review", "escalated"].map((st) => (
+          <span className="text-xs font-semibold text-slate-400">State:</span>
+          {[
+            { value: "ALL", label: "ALL" },
+            { value: "created", label: "Created" },
+            { value: "overdue", label: "Overdue" },
+            { value: "nudged", label: "Nudged" },
+            { value: "replied", label: "Replied" },
+            { value: "promised", label: "Promised" },
+            { value: "reminded", label: "Reminded" },
+            { value: "recovered", label: "Recovered" },
+            { value: "disputed", label: "Disputed" },
+            { value: "escalated", label: "Escalated" },
+            { value: "human_review", label: "Human Review" },
+            { value: "opted_out", label: "Opted Out" },
+            { value: "terminated", label: "Terminated" },
+          ].map((st) => (
             <button
-              key={st}
+              key={st.value}
               type="button"
-              onClick={() => setStatusFilter(st)}
+              onClick={() => setStatusFilter(st.value)}
               className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition-all ${
-                statusFilter === st
+                statusFilter === st.value
                   ? "bg-sky-500 text-white shadow-sm shadow-sky-500/20"
                   : "bg-panel border border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
               }`}
             >
-              {st.toUpperCase().replace("_", " ")}
+              {st.label}
             </button>
           ))}
         </div>
