@@ -79,34 +79,43 @@ export function InvoiceTableInteractive({ initialInvoices }: InvoiceTableInterac
 
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs font-semibold text-slate-400">State:</span>
-          {[
-            { value: "ALL", label: "ALL" },
-            { value: "created", label: "Created" },
-            { value: "overdue", label: "Overdue" },
-            { value: "nudged", label: "Nudged" },
-            { value: "replied", label: "Replied" },
-            { value: "promised", label: "Promised" },
-            { value: "reminded", label: "Reminded" },
-            { value: "recovered", label: "Recovered" },
-            { value: "disputed", label: "Disputed" },
-            { value: "escalated", label: "Escalated" },
-            { value: "human_review", label: "Human Review" },
-            { value: "opted_out", label: "Opted Out" },
-            { value: "terminated", label: "Terminated" },
-          ].map((st) => (
-            <button
-              key={st.value}
-              type="button"
-              onClick={() => setStatusFilter(st.value)}
-              className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition-all ${
-                statusFilter === st.value
-                  ? "bg-sky-500 text-white shadow-sm shadow-sky-500/20"
-                  : "bg-panel border border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
-              }`}
-            >
-              {st.label}
-            </button>
-          ))}
+          {(() => {
+            const stateLabels: Record<string, string> = {
+              created: "Created", overdue: "Overdue", nudged: "Nudged",
+              replied: "Replied", promised: "Promised", reminded: "Reminded",
+              recovered: "Recovered", disputed: "Disputed", escalated: "Escalated",
+              human_review: "Human Review", opted_out: "Opted Out", terminated: "Terminated",
+            };
+            const counts: Record<string, number> = {};
+            for (const inv of initialInvoices) {
+              const s = inv.state.toLowerCase();
+              counts[s] = (counts[s] || 0) + 1;
+            }
+            const pills = [
+              { value: "ALL", label: "ALL", count: initialInvoices.length },
+              ...Object.entries(counts)
+                .sort(([, a], [, b]) => b - a)
+                .map(([val, cnt]) => ({
+                  value: val,
+                  label: stateLabels[val] || val,
+                  count: cnt,
+                })),
+            ];
+            return pills.map((st) => (
+              <button
+                key={st.value}
+                type="button"
+                onClick={() => setStatusFilter(st.value)}
+                className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition-all ${
+                  statusFilter === st.value
+                    ? "bg-sky-500 text-white shadow-sm shadow-sky-500/20"
+                    : "bg-panel border border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+                }`}
+              >
+                {st.label} <span className="ml-1 opacity-60">{st.count}</span>
+              </button>
+            ));
+          })()}
         </div>
       </div>
 
