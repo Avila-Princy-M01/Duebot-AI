@@ -32,7 +32,7 @@ export function ReplySimulator({ onReplyInjected }: ReplySimulatorProps) {
   }, []);
 
   const handleInject = async () => {
-    if (!replyText.trim()) return;
+    if (!invoiceId.trim() || !replyText.trim()) return;
     setBusy(true);
     setResult(null);
     try {
@@ -89,7 +89,7 @@ export function ReplySimulator({ onReplyInjected }: ReplySimulatorProps) {
             />
             <button
               type="button"
-              disabled={busy || !replyText.trim()}
+              disabled={busy || !invoiceId.trim() || !replyText.trim()}
               onClick={() => void handleInject()}
               className="rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 px-4 py-2 text-xs font-bold text-white shadow-lg shadow-indigo-500/20 hover:scale-[1.02] disabled:opacity-50"
             >
