@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { seedDemo } from "../../lib/api";
 
 interface SeedButtonProps {
@@ -8,6 +9,7 @@ interface SeedButtonProps {
 }
 
 export function SeedButton({ label = "Seed Synthetic Batch" }: SeedButtonProps) {
+  const router = useRouter();
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -23,9 +25,8 @@ export function SeedButton({ label = "Seed Synthetic Batch" }: SeedButtonProps) 
           void seedDemo()
             .then((result) => {
               setMessage(`Successfully seeded ${result.data.invoices} invoices & ${result.data.buyers} buyers!`);
-              setTimeout(() => {
-                window.location.reload();
-              }, 600);
+              setBusy(false);
+              router.refresh();
             })
             .catch((err: unknown) => {
               setMessage(err instanceof Error ? err.message : "Seed failed");
