@@ -57,7 +57,7 @@ jobs:
         run: python scripts/eval_reply_parser.py --mode=fallback
 
       - name: Run Live LLM Reply Parser Benchmark (if API key available)
-        if: ${{ secrets.GEMINI_API_KEY != '' || secrets.ANTHROPIC_API_KEY != '' || inputs.run_live_eval }}
+        if: ${{ secrets.GEMINI_API_KEY != '' || secrets.ANTHROPIC_API_KEY != '' || (github.event_name == 'workflow_dispatch' && inputs.run_live_eval == true) }}
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
