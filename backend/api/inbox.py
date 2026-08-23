@@ -73,12 +73,15 @@ async def inject_reply(
 
     try:
         await process_reply(session, invoice, buyer, body.text, parser=parser)
-    except InvalidTransitionError as err:
+    except InvalidTransitionError:
+        note = (
+            f"Invoice is in state '{invoice.state}' — repeat automated transitions locked."
+        )
         return SuccessEnvelope(
             data={
                 "invoice_id": invoice.invoice_id,
                 "state": invoice.state,
-                "note": f"Invoice is in state '{invoice.state}' — repeat automated transitions locked ({err}).",
+                "note": note,
             }
         )
 
