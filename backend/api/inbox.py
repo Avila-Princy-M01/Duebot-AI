@@ -7,6 +7,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.dependencies import get_db, reply_parser
@@ -15,6 +16,7 @@ from backend.exceptions import NotFoundError
 from backend.integrations.whatsapp import INBOX, SimulatedMessage
 from backend.llm.reply_parser import ReplyParser
 from backend.models.buyer import Buyer
+from backend.models.interaction import Interaction
 from backend.models.invoice import Invoice
 from backend.schemas.common import SuccessEnvelope
 from backend.tasks.reply_processor import process_reply
@@ -41,18 +43,30 @@ class InboundReplyBody(BaseModel):
 
 
 @router.get("")
-async def list_inbox() -> SuccessEnvelope[list[InboxMessageOut]]:
-    """Process-local simulated WhatsApp inbox."""
+async def list_inbox(
+    session: AsyncSession = Depends(get_db),
+) -> SuccessEnvelope[list[InboxMessageOut]]:
+    """Return all interactions from the database as inbox rows."""
+    result = await session.execute(
+        select(Interaction)
+        .where(Interaction.channel == "whatsapp")
+        .order_by(Interaction.sent_at.desc())
+        .limit(200)
+    )
+    rows = result.scalars().all()
     data = [
         InboxMessageOut(
-            interaction_id=str(m.interaction_id),
-            invoice_id=m.invoice_id,
-            to_phone_masked=m.to_phone_masked,
-            body=m.body,
-            sent_at=m.sent_at.isoformat(),
-            direction=m.direction,
+            interaction_id=str(r.id),
+            invoice_id=r.invoice_id,
+            to_phone_masked=(
+                "inbound" if r.direction == "inbound"
+                else "outbound"
+            ),
+            body=r.message_text,
+            sent_at=r.sent_at.isoformat(),
+            direction=r.direction,
         )
-        for m in INBOX.messages
+        for r in rows
     ]
     return SuccessEnvelope(data=data)
 
@@ -72,10 +86,13 @@ async def inject_reply(
         raise NotFoundError(f"buyer {invoice.buyer_id} not found")
 
     try:
-        await process_reply(session, invoice, buyer, body.text, parser=parser)
+        await process_reply(
+            session, invoice, buyer, body.text, parser=parser
+        )
     except InvalidTransitionError:
         note = (
-            f"Invoice is in state '{invoice.state}' — repeat automated transitions locked."
+            f"Invoice is in state '{invoice.state}'"
+            " — repeat automated transitions locked."
         )
         return SuccessEnvelope(
             data={
@@ -85,9 +102,29 @@ async def inject_reply(
             }
         )
 
+    # Persist the inbound message to the Interaction table
+    iid = uuid4()
+    session.add(
+        Interaction(
+            id=iid,
+            invoice_id=invoice.invoice_id,
+            buyer_id=invoice.buyer_id,
+            channel="whatsapp",
+            direction="inbound",
+            sent_at=datetime.now(UTC),
+            message_text=body.text,
+            intent_label="",
+            confidence=None,
+            delivery_status="delivered",
+            attempt_number=1,
+        )
+    )
+    await session.flush()
+
+    # Also keep the in-memory inbox in sync
     INBOX.messages.append(
         SimulatedMessage(
-            interaction_id=uuid4(),
+            interaction_id=iid,
             invoice_id=invoice.invoice_id,
             to_phone_masked="inbound",
             body=body.text,
@@ -95,4 +132,10 @@ async def inject_reply(
             direction="inbound",
         )
     )
-    return SuccessEnvelope(data={"invoice_id": invoice.invoice_id, "state": invoice.state})
+    return SuccessEnvelope(
+        data={
+            "invoice_id": invoice.invoice_id,
+            "state": invoice.state,
+        }
+    )
+
