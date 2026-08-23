@@ -11,6 +11,14 @@ export function BuyerTableInteractive({ buyers }: BuyerTableInteractiveProps) {
   const [search, setSearch] = useState("");
   const [tierFilter, setTierFilter] = useState("ALL");
 
+  /* Map filter keys to actual backend reliability_tier values */
+  const tierOptions: { key: string; label: string; value: string }[] = [
+    { key: "ALL", label: "ALL", value: "ALL" },
+    { key: "reliable", label: "Reliable", value: "reliable" },
+    { key: "occasional_late", label: "Occasional Late", value: "occasional_late" },
+    { key: "chronic_late", label: "Chronic Late", value: "chronic_late" },
+  ];
+
   const filtered = buyers.filter((b) => {
     const matchesSearch =
       search === "" ||
@@ -18,20 +26,35 @@ export function BuyerTableInteractive({ buyers }: BuyerTableInteractiveProps) {
       b.contact_name.toLowerCase().includes(search.toLowerCase()) ||
       b.buyer_id.toLowerCase().includes(search.toLowerCase());
 
-    const matchesTier = tierFilter === "ALL" || b.reliability_tier.toUpperCase() === tierFilter;
+    const matchesTier =
+      tierFilter === "ALL" ||
+      b.reliability_tier.toLowerCase() === tierFilter.toLowerCase();
     return matchesSearch && matchesTier;
   });
 
   const getTierBadge = (tier: string) => {
-    switch (tier.toUpperCase()) {
-      case "TIER_1":
-      case "GOLD":
+    switch (tier.toLowerCase()) {
+      case "reliable":
+        return "bg-emerald-500/10 text-emerald-400 border-emerald-500/30";
+      case "occasional_late":
         return "bg-amber-500/10 text-amber-400 border-amber-500/30";
-      case "TIER_2":
-      case "SILVER":
-        return "bg-sky-500/10 text-sky-400 border-sky-500/30";
+      case "chronic_late":
+        return "bg-rose-500/10 text-rose-400 border-rose-500/30";
       default:
         return "bg-purple-500/10 text-purple-400 border-purple-500/30";
+    }
+  };
+
+  const getTierLabel = (tier: string) => {
+    switch (tier.toLowerCase()) {
+      case "reliable":
+        return "Reliable";
+      case "occasional_late":
+        return "Occasional Late";
+      case "chronic_late":
+        return "Chronic Late";
+      default:
+        return tier;
     }
   };
 
@@ -53,18 +76,18 @@ export function BuyerTableInteractive({ buyers }: BuyerTableInteractiveProps) {
 
         <div className="flex items-center gap-2">
           <span className="text-xs font-semibold text-slate-400">Reliability:</span>
-          {["ALL", "TIER_1", "TIER_2", "TIER_3"].map((t) => (
+          {tierOptions.map((t) => (
             <button
-              key={t}
+              key={t.key}
               type="button"
-              onClick={() => setTierFilter(t)}
+              onClick={() => setTierFilter(t.value)}
               className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition-all ${
-                tierFilter === t
+                tierFilter === t.value
                   ? "bg-sky-500 text-white shadow-sm shadow-sky-500/20"
                   : "bg-panel border border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
               }`}
             >
-              {t === "ALL" ? "ALL" : t.replace("_", " ")}
+              {t.label}
             </button>
           ))}
         </div>
@@ -105,7 +128,7 @@ export function BuyerTableInteractive({ buyers }: BuyerTableInteractiveProps) {
                       </td>
                       <td className="px-4 py-3.5">
                         <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-extrabold uppercase ${getTierBadge(buyer.reliability_tier)}`}>
-                          {buyer.reliability_tier}
+                          {getTierLabel(buyer.reliability_tier)}
                         </span>
                       </td>
                       <td className="px-4 py-3.5">
