@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.dependencies import get_db, reply_parser
+from backend.engine.states import InvalidTransitionError
 from backend.exceptions import NotFoundError
 from backend.integrations.whatsapp import INBOX, SimulatedMessage
 from backend.llm.reply_parser import ReplyParser
@@ -69,7 +70,18 @@ async def inject_reply(
     buyer = await session.get(Buyer, invoice.buyer_id)
     if buyer is None:
         raise NotFoundError(f"buyer {invoice.buyer_id} not found")
-    await process_reply(session, invoice, buyer, body.text, parser=parser)
+
+    try:
+        await process_reply(session, invoice, buyer, body.text, parser=parser)
+    except InvalidTransitionError as err:
+        return SuccessEnvelope(
+            data={
+                "invoice_id": invoice.invoice_id,
+                "state": invoice.state,
+                "note": f"Invoice is in state '{invoice.state}' — repeat automated transitions locked ({err}).",
+            }
+        )
+
     INBOX.messages.append(
         SimulatedMessage(
             interaction_id=uuid4(),

@@ -37,7 +37,12 @@ export function ReplySimulator({ onReplyInjected }: ReplySimulatorProps) {
     setResult(null);
     try {
       const res = await injectReply(invoiceId.trim(), replyText.trim());
-      setResult(`Reply processed successfully! New Invoice State: ${res.data.state}`);
+      const note = (res.data as Record<string, string>).note;
+      if (note) {
+        setResult(note);
+      } else {
+        setResult(`Reply processed successfully! New Invoice State: ${res.data.state}`);
+      }
       setReplyText("");
       if (onReplyInjected) onReplyInjected();
     } catch (err: unknown) {
