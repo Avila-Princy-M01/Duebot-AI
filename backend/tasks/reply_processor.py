@@ -37,6 +37,22 @@ async def process_reply(
     ``parsed`` is injectable so tests and the eval harness never need a live LLM.
     """
     now = as_of or datetime.now(UTC)
+    if invoice.state == InvoiceState.CREATED.value:
+        await apply_transition(
+            session,
+            invoice,
+            TransitionEvent.AGED,
+            reasoning="invoice past due date",
+            occurred_at=now,
+        )
+    if invoice.state == InvoiceState.OVERDUE.value:
+        await apply_transition(
+            session,
+            invoice,
+            TransitionEvent.NUDGE_SENT,
+            reasoning="outbound nudge sent before reply received",
+            occurred_at=now,
+        )
     if invoice.state == InvoiceState.NUDGED.value:
         await apply_transition(
             session,
