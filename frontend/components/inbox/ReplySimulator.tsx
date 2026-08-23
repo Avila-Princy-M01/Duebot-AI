@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { injectReply } from "../../lib/api";
+import { useEffect, useState } from "react";
+import { injectReply, listInvoices } from "../../lib/api";
 
 interface ReplySimulatorProps {
   onReplyInjected?: () => void;
@@ -19,6 +19,17 @@ export function ReplySimulator({ onReplyInjected }: ReplySimulatorProps) {
   const [replyText, setReplyText] = useState("");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<string | null>(null);
+
+  useEffect(() => {
+    void listInvoices({ limit: 1 } as any)
+      .then((res) => {
+        const first = res.data?.[0];
+        if (first?.invoice_id) {
+          setInvoiceId(first.invoice_id);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const handleInject = async () => {
     if (!replyText.trim()) return;
