@@ -102,36 +102,6 @@ async def inject_reply(
             }
         )
 
-    # Persist the inbound message to the Interaction table
-    iid = uuid4()
-    session.add(
-        Interaction(
-            id=iid,
-            invoice_id=invoice.invoice_id,
-            buyer_id=invoice.buyer_id,
-            channel="whatsapp",
-            direction="inbound",
-            sent_at=datetime.now(UTC),
-            message_text=body.text,
-            intent_label="",
-            confidence=None,
-            delivery_status="delivered",
-            attempt_number=1,
-        )
-    )
-    await session.flush()
-
-    # Also keep the in-memory inbox in sync
-    INBOX.messages.append(
-        SimulatedMessage(
-            interaction_id=iid,
-            invoice_id=invoice.invoice_id,
-            to_phone_masked="inbound",
-            body=body.text,
-            sent_at=datetime.now(UTC),
-            direction="inbound",
-        )
-    )
     return SuccessEnvelope(
         data={
             "invoice_id": invoice.invoice_id,

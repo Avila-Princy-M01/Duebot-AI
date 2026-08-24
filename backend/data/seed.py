@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from uuid import uuid4
 
@@ -15,6 +15,7 @@ from backend.data.csv_mapper import (
 )
 from backend.data.generator import BuyerMessage, DueBotDataGenerator
 from backend.logging_util import mask_email, mask_phone
+from backend.models.audit_log import AuditLog
 from backend.models.buyer import Buyer
 from backend.models.interaction import Interaction
 from backend.models.invoice import Invoice
@@ -54,6 +55,7 @@ async def seed_from_generator(
     from sqlalchemy import delete
 
     # Clear existing synthetic rows for an idempotent seed operation
+    await session.execute(delete(AuditLog))
     await session.execute(delete(Interaction))
     await session.execute(delete(Invoice))
     await session.execute(delete(Buyer))
@@ -98,6 +100,8 @@ async def seed_from_generator(
         )
     await session.flush()
 
+    now_utc = datetime.now(UTC)
+
     for inv in gen.invoices:
         state = initial_state_for_status(inv.status, inv.invoice_id in inbound_by_invoice)
         opted_out = inv.edge_case == "opt_out_mid_sequence"
@@ -134,8 +138,49 @@ async def seed_from_generator(
                 notes=inv.notes or None,
             )
         )
+
+        # Seed realistic audit trail entries so /audit and invoice details are populated
+        inv_created_at = min(_dt(f"{inv.issue_date}T09:00:00"), now_utc - timedelta(hours=10))
+        session.add(
+            AuditLog(
+                invoice_id=inv.invoice_id,
+                from_state="created",
+                to_state="created",
+                actor="system",
+                occurred_at=inv_created_at,
+                reasoning_summary="invoice ingested into receivables ledger",
+                extra_metadata={"event": "invoice_created"},
+            )
+        )
+        if state.value != "created":
+            due_dt = min(_dt(f"{inv.due_date}T10:00:00"), now_utc - timedelta(hours=5))
+            session.add(
+                AuditLog(
+                    invoice_id=inv.invoice_id,
+                    from_state="created",
+                    to_state="overdue",
+                    actor="agent",
+                    occurred_at=due_dt,
+                    reasoning_summary="invoice passed due date with outstanding balance",
+                    extra_metadata={"event": "aged"},
+                )
+            )
+            if state.value in ("nudged", "replied", "promised", "disputed", "opted_out", "recovered"):
+                nudge_dt = min(due_dt + timedelta(days=min(max(inv.days_overdue, 1), 5)), now_utc - timedelta(hours=2))
+                session.add(
+                    AuditLog(
+                        invoice_id=inv.invoice_id,
+                        from_state="overdue",
+                        to_state="nudged",
+                        actor="agent",
+                        occurred_at=nudge_dt,
+                        reasoning_summary="automated WhatsApp payment reminder sent with Razorpay link",
+                        extra_metadata={"event": "nudge_sent", "attempt_number": 1},
+                    )
+                )
     await session.flush()
 
+    # Normalize synthetic message timestamps to be safely in the past (before current live interactions)
     attempt_by_invoice: dict[str, int] = {}
     for msg in gen.messages:
         if msg.direction == "outbound":
@@ -143,6 +188,11 @@ async def seed_from_generator(
             attempt = attempt_by_invoice[msg.invoice_id]
         else:
             attempt = attempt_by_invoice.get(msg.invoice_id, 1)
+
+        raw_dt = _dt(msg.timestamp)
+        # Cap synthetic message timestamp to at least 1 hour in the past so live tests always rank #1
+        msg_sent_at = min(raw_dt, now_utc - timedelta(hours=2))
+
         session.add(
             Interaction(
                 id=uuid4(),
@@ -150,7 +200,7 @@ async def seed_from_generator(
                 buyer_id=msg.buyer_id,
                 channel=msg.channel,
                 direction=msg.direction,
-                sent_at=_dt(msg.timestamp),
+                sent_at=msg_sent_at,
                 message_text=msg.message_text,
                 intent_label=msg.intent_label,
                 confidence=None if msg.direction == "outbound" else 0.9,
@@ -169,3 +219,4 @@ async def seed_from_generator(
 
 
 __all__ = ["seed_from_generator", "BuyerMessage"]
+

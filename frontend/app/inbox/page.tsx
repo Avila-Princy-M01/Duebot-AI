@@ -7,17 +7,25 @@ import type { InboxRow } from "../../lib/types";
 
 export default function InboxPage() {
   const [rows, setRows] = useState<InboxRow[]>([]);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>("ALL");
 
   const loadInbox = () => {
+    setLoading(true);
     void listInbox()
-      .then((res) => setRows(res.data))
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : "Failed to load inbox"));
+      .then((res) => {
+        setRows(res.data);
+        setError(null);
+      })
+      .catch((err: unknown) => setError(err instanceof Error ? err.message : "Failed to load inbox"))
+      .finally(() => setLoading(false));
   };
 
   useEffect(() => {
     loadInbox();
+    const interval = setInterval(loadInbox, 3000);
+    return () => clearInterval(interval);
   }, []);
 
   const filtered = rows.filter((r) => {
@@ -35,7 +43,15 @@ export default function InboxPage() {
             Real-time audit log of outbound Razorpay WhatsApp nudges and inbound buyer replies.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={loadInbox}
+            className="flex items-center gap-1.5 rounded-xl border border-slate-800 bg-panel px-3 py-1.5 text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition-all shadow-sm"
+          >
+            <span className={`h-2 w-2 rounded-full ${loading ? "bg-amber-400 animate-ping" : "bg-emerald-400"}`} />
+            <span>{loading ? "Refreshing..." : "Refresh Live"}</span>
+          </button>
           <span className="rounded-xl border border-slate-800 bg-panel px-3 py-1.5 text-xs font-bold text-sky-400">
             {rows.length} Total Messages Logged
           </span>

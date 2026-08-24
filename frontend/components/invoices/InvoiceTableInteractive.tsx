@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { InvoiceRow } from "../../lib/types";
+import { listInvoices } from "../../lib/api";
 import { NudgeModal } from "./NudgeModal";
 
 interface InvoiceTableInteractiveProps {
@@ -9,12 +10,21 @@ interface InvoiceTableInteractiveProps {
 }
 
 export function InvoiceTableInteractive({ initialInvoices }: InvoiceTableInteractiveProps) {
+  const [invoices, setInvoices] = useState<InvoiceRow[]>(initialInvoices);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [riskFilter, setRiskFilter] = useState<string>("ALL");
   const [activeNudgeId, setActiveNudgeId] = useState<string | null>(null);
 
-  const filtered = initialInvoices.filter((inv) => {
+  useEffect(() => {
+    setInvoices(initialInvoices);
+  }, [initialInvoices]);
+
+  const refreshInvoices = () => {
+    void listInvoices().then((res) => setInvoices(res.data)).catch(() => {});
+  };
+
+  const filtered = invoices.filter((inv) => {
     const matchesSearch =
       search === "" ||
       inv.invoice_number.toLowerCase().includes(search.toLowerCase()) ||
@@ -191,7 +201,10 @@ export function InvoiceTableInteractive({ initialInvoices }: InvoiceTableInterac
       <NudgeModal
         invoiceId={activeNudgeId}
         onClose={() => setActiveNudgeId(null)}
-        onSuccess={() => setActiveNudgeId(null)}
+        onSuccess={() => {
+          setActiveNudgeId(null);
+          refreshInvoices();
+        }}
       />
     </div>
   );
