@@ -61,6 +61,12 @@ export function BaselineComparison({ rows }: BaselineComparisonProps) {
                   <span className="font-bold text-white">{pct(row.recovery_30d)}</span>
                 </div>
                 <div className="flex items-center justify-between text-slate-400">
+                  <span>Avg Days to Recovery:</span>
+                  <span className="font-mono font-bold text-amber-400">
+                    {Number(row.avg_days_to_recovery ?? 0).toFixed(1)} days
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-slate-400">
                   <span>Contacts Sent:</span>
                   <span className="font-mono font-bold text-white">{row.total_contacts_sent}</span>
                 </div>
@@ -90,6 +96,7 @@ export function BaselineComparison({ rows }: BaselineComparisonProps) {
                 <th className="px-4 py-3.5">Eval Set Size</th>
                 <th className="px-4 py-3.5">Recovery Rate</th>
                 <th className="px-4 py-3.5">30-Day Recovery</th>
+                <th className="px-4 py-3.5">Avg Days to Pay</th>
                 <th className="px-4 py-3.5">Contacts Sent</th>
                 <th className="px-4 py-3.5">Total Recovered Value</th>
               </tr>
@@ -103,6 +110,9 @@ export function BaselineComparison({ rows }: BaselineComparisonProps) {
                     {pct(row.recovered_count / Math.max(row.eval_set_size, 1))}
                   </td>
                   <td className="px-4 py-3.5 text-slate-300">{pct(row.recovery_30d)}</td>
+                  <td className="px-4 py-3.5 font-bold text-amber-400">
+                    {Number(row.avg_days_to_recovery ?? 0).toFixed(1)}d
+                  </td>
                   <td className="px-4 py-3.5 text-slate-300">{row.total_contacts_sent}</td>
                   <td className="px-4 py-3.5 font-bold text-emerald-400">
                     ₹{Number(row.recovered_value).toLocaleString("en-IN")}
