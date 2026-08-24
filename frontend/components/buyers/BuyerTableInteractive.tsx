@@ -100,15 +100,16 @@ export function BuyerTableInteractive({ buyers }: BuyerTableInteractiveProps) {
               <tr>
                 <th className="px-4 py-3.5">Company Name</th>
                 <th className="px-4 py-3.5">Contact Person</th>
-                <th className="px-4 py-3.5">Phone & Email</th>
+                <th className="px-4 py-3.5">Buyer ID</th>
                 <th className="px-4 py-3.5">Reliability Tier</th>
                 <th className="px-4 py-3.5">On-Time Pay Rate</th>
+                <th className="px-4 py-3.5 text-right">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60">
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-slate-500">
+                  <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
                     No buyers found.
                   </td>
                 </tr>
@@ -141,6 +142,14 @@ export function BuyerTableInteractive({ buyers }: BuyerTableInteractiveProps) {
                           </div>
                           <span className="font-mono font-bold text-white">{ratePct}%</span>
                         </div>
+                      </td>
+                      <td className="px-4 py-3.5 text-right">
+                        <a
+                          href={`/buyers/${buyer.buyer_id}`}
+                          className="inline-flex items-center gap-1 rounded-lg border border-sky-500/30 bg-sky-500/10 px-3 py-1.5 text-xs font-bold text-sky-400 hover:bg-sky-500 hover:text-white transition-all shadow-sm"
+                        >
+                          🎙️ Brief →
+                        </a>
                       </td>
                     </tr>
                   );
