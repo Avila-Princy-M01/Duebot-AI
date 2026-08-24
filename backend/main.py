@@ -45,6 +45,7 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    from backend.api.assistant import router as assistant_router
     from backend.api.audit import router as audit_router
     from backend.api.buyers import router as buyers_router
     from backend.api.health import router as health_router
@@ -57,14 +58,15 @@ def create_app() -> FastAPI:
     from backend.api.seed import router as seed_router
 
     app.include_router(health_router, prefix="/api")
+    app.include_router(assistant_router, prefix="/api")
     app.include_router(merchants_router, prefix="/api")
-    app.include_router(invoices_router, prefix="/api")
     app.include_router(buyers_router, prefix="/api")
-    app.include_router(nudge_router, prefix="/api")
+    app.include_router(invoices_router, prefix="/api")
     app.include_router(promises_router, prefix="/api")
     app.include_router(audit_router, prefix="/api")
-    app.include_router(metrics_router, prefix="/api")
     app.include_router(inbox_router, prefix="/api")
+    app.include_router(metrics_router, prefix="/api")
+    app.include_router(nudge_router, prefix="/api")
     app.include_router(seed_router, prefix="/api")
 
     @app.exception_handler(NotFoundError)

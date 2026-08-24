@@ -130,3 +130,12 @@ export interface BuyerBrief {
   model: string;
 }
 
+export interface AssistantResponse {
+  answer: string;
+  spoken_answer: string;
+  category: string;
+  suggested_action: string | null;
+  model: string;
+}
+
+

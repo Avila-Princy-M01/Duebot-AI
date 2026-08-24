@@ -7,13 +7,11 @@ Never makes decisions — only summarizes already-computed facts for the merchan
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
 
 from anthropic.types import ToolParam
 
 from backend.exceptions import ConfigurationError, IntegrationError
 from backend.llm.client import AnthropicClient
-
 
 SUBMIT_BUYER_BRIEF_TOOL: ToolParam = {
     "name": "submit_buyer_brief",

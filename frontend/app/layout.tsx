@@ -1,6 +1,7 @@
 import "./globals.css";
 import type { ReactNode } from "react";
 import { Nav } from "../components/ui/Nav";
+import { GlobalVoiceAssistant } from "../components/layout/GlobalVoiceAssistant";
 
 export const metadata = {
   title: "DueBot",
@@ -17,6 +18,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
       <body>
         <Nav />
         <main className="mx-auto max-w-7xl px-6 py-8">{children}</main>
+        <GlobalVoiceAssistant />
       </body>
     </html>
   );

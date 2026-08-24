@@ -11,6 +11,7 @@ from backend.config import Settings, get_settings
 from backend.integrations.email_sender import EmailSender
 from backend.integrations.razorpay import RazorpayClient
 from backend.integrations.whatsapp import WhatsAppSender
+from backend.llm.assistant import DueBotAssistant
 from backend.llm.buyer_briefer import BuyerBriefer
 from backend.llm.client import AnthropicClient
 from backend.llm.message_drafter import MessageDrafter
@@ -67,3 +68,9 @@ def message_drafter(client: AnthropicClient = Depends(anthropic_client)) -> Mess
 def buyer_briefer(client: AnthropicClient = Depends(anthropic_client)) -> BuyerBriefer:
     """Buyer brief summarizer."""
     return BuyerBriefer(client)
+
+
+def duebot_assistant(client: AnthropicClient = Depends(anthropic_client)) -> DueBotAssistant:
+    """Interactive portfolio assistant."""
+    return DueBotAssistant(client)
+

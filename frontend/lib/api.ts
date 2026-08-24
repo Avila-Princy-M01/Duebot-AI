@@ -92,3 +92,14 @@ export async function injectReply(invoiceId: string, text: string): Promise<Enve
 export async function seedDemo(): Promise<Envelope<Record<string, number>>> {
   return request("/api/seed?num_invoices=80&seed=42", { method: "POST" });
 }
+
+export async function askAssistant(params: {
+  query: string;
+  buyer_id?: string;
+  invoice_id?: string;
+}): Promise<Envelope<import("./types").AssistantResponse>> {
+  return request<Envelope<import("./types").AssistantResponse>>("/api/assistant/ask", {
+    method: "POST",
+    body: JSON.stringify(params),
+  });
+}

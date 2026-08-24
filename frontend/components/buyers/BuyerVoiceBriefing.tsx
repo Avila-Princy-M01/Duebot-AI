@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getBuyerBrief } from "../../lib/api";
-import type { BuyerBrief } from "../../lib/types";
+import { askAssistant, getBuyerBrief } from "../../lib/api";
+import type { AssistantResponse, BuyerBrief } from "../../lib/types";
 
 interface BuyerVoiceBriefingProps {
   buyerId: string;
@@ -15,6 +15,11 @@ export function BuyerVoiceBriefing({ buyerId }: BuyerVoiceBriefingProps) {
   const [isListening, setIsListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Interactive Question State
+  const [customQuery, setCustomQuery] = useState("");
+  const [chatLoading, setChatLoading] = useState(false);
+  const [chatResponse, setChatResponse] = useState<AssistantResponse | null>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
@@ -38,7 +43,7 @@ export function BuyerVoiceBriefing({ buyerId }: BuyerVoiceBriefingProps) {
   const handleSpeak = (textToSpeak?: string) => {
     if (!speechSupported || typeof window === "undefined") return;
 
-    const content = textToSpeak || brief?.spoken_summary || brief?.summary;
+    const content = textToSpeak || chatResponse?.spoken_answer || brief?.spoken_summary || brief?.summary;
     if (!content) return;
 
     window.speechSynthesis.cancel();
@@ -52,7 +57,6 @@ export function BuyerVoiceBriefing({ buyerId }: BuyerVoiceBriefingProps) {
     utterance.rate = 1.0;
     utterance.pitch = 1.0;
 
-    // Pick a preferred natural English voice if available
     const voices = window.speechSynthesis.getVoices();
     const preferred = voices.find(
       (v) => v.lang.includes("en-IN") || v.lang.includes("en-GB") || v.lang.includes("en-US")
@@ -66,6 +70,23 @@ export function BuyerVoiceBriefing({ buyerId }: BuyerVoiceBriefingProps) {
     window.speechSynthesis.speak(utterance);
   };
 
+  const handleAskQuestion = async (queryText: string) => {
+    if (!queryText.trim()) return;
+    setChatLoading(true);
+    setError(null);
+    try {
+      const res = await askAssistant({ query: queryText, buyer_id: buyerId });
+      setChatResponse(res.data);
+      if (res.data.spoken_answer) {
+        handleSpeak(res.data.spoken_answer);
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to query assistant");
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
   const handleVoiceListen = () => {
     if (typeof window === "undefined") return;
 
@@ -74,7 +95,7 @@ export function BuyerVoiceBriefing({ buyerId }: BuyerVoiceBriefingProps) {
         continuous: boolean;
         lang: string;
         start: () => void;
-        onresult: (e: { results: Array<Array<{ transcript: string }>> }) => void;
+        onresult: (e: { results?: Array<Array<{ transcript: string }>> }) => void;
         onerror: () => void;
         onend: () => void;
       };
@@ -82,7 +103,7 @@ export function BuyerVoiceBriefing({ buyerId }: BuyerVoiceBriefingProps) {
 
     const SpeechRec = windowWithSpeech.webkitSpeechRecognition;
     if (!SpeechRec) {
-      setError("Speech recognition is not supported in this browser. Please use Chrome/Edge or click Generate Brief.");
+      setError("Speech recognition is not supported in this browser. Please use Chrome/Edge or type your question.");
       return;
     }
 
@@ -94,17 +115,9 @@ export function BuyerVoiceBriefing({ buyerId }: BuyerVoiceBriefingProps) {
       recognition.onresult = (event) => {
         const transcript = event.results?.[0]?.[0]?.transcript ?? "";
         setIsListening(false);
-        if (
-          transcript.toLowerCase().includes("brief") ||
-          transcript.toLowerCase().includes("summary") ||
-          transcript.toLowerCase().includes("status") ||
-          transcript.toLowerCase().includes("tell me")
-        ) {
-          void handleFetchBrief().then(() => {
-            if (brief?.spoken_summary) handleSpeak(brief.spoken_summary);
-          });
-        } else {
-          void handleFetchBrief();
+        if (transcript.trim()) {
+          setCustomQuery(transcript);
+          void handleAskQuestion(transcript);
         }
       };
 
@@ -118,28 +131,36 @@ export function BuyerVoiceBriefing({ buyerId }: BuyerVoiceBriefingProps) {
     }
   };
 
+  const sampleQuestions = [
+    "What is their total overdue balance & days overdue?",
+    "When was their last WhatsApp reply or promise?",
+    "Why are they classified in this reliability tier?",
+    "What is the recommended next action for this buyer?",
+  ];
+
   return (
-    <div className="rounded-2xl border border-sky-500/30 bg-gradient-to-br from-sky-950/40 via-panel to-panel p-6 backdrop-blur-md shadow-xl space-y-4">
+    <div className="rounded-2xl border border-sky-500/30 bg-gradient-to-br from-sky-950/40 via-panel to-panel p-6 backdrop-blur-md shadow-xl space-y-5">
+      {/* Header */}
       <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between border-b border-slate-800/80 pb-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-500/20 border border-sky-500/30 text-sky-400">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-500/20 border border-sky-500/30 text-sky-400 text-lg shadow-inner">
             🎙️
           </div>
           <div>
             <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              AI Executive Voice Briefing
+              Interactive Executive AI & Voice Briefing
               <span className="rounded bg-sky-500/10 border border-sky-500/30 px-2 py-0.5 text-[10px] font-mono font-bold text-sky-400">
-                Scoped · Read-Only
+                Grounded · Read-Only
               </span>
             </h3>
             <p className="text-xs text-slate-400">
-              Deterministic facts summarized on-demand via browser Web Speech audio.
+              Ask anything about this buyer or listen to live audio briefs with browser Web Speech.
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Voice Input Trigger */}
+          {/* Voice Input Mic */}
           <button
             type="button"
             onClick={handleVoiceListen}
@@ -148,23 +169,23 @@ export function BuyerVoiceBriefing({ buyerId }: BuyerVoiceBriefingProps) {
                 ? "bg-rose-500 text-white border-rose-400 animate-pulse"
                 : "border-slate-800 bg-slate-900 text-slate-300 hover:border-slate-700 hover:text-white"
             }`}
-            title="Ask via Microphone"
+            title="Speak Question via Microphone"
           >
-            <span>{isListening ? "Listening..." : "🎤 Voice Prompt"}</span>
+            <span>{isListening ? "Listening..." : "🎤 Speak Query"}</span>
           </button>
 
-          {/* Generate / Refresh Brief Button */}
+          {/* Generate Summary */}
           <button
             type="button"
             onClick={handleFetchBrief}
             disabled={loading}
             className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 px-4 py-2 text-xs font-bold text-white shadow-lg shadow-sky-500/20 hover:opacity-90 disabled:opacity-50"
           >
-            <span>{loading ? "Summarizing..." : brief ? "Re-generate Brief" : "Generate Brief"}</span>
+            <span>{loading ? "Summarizing..." : brief ? "Re-summarize" : "Executive Brief"}</span>
           </button>
 
-          {/* Text to Speech Readout Button */}
-          {brief ? (
+          {/* Read Aloud Audio */}
+          {brief || chatResponse ? (
             <button
               type="button"
               onClick={() => handleSpeak()}
@@ -186,29 +207,103 @@ export function BuyerVoiceBriefing({ buyerId }: BuyerVoiceBriefingProps) {
         </div>
       ) : null}
 
-      {!brief && !loading ? (
-        <div className="py-4 text-center">
-          <p className="text-xs text-slate-500">
-            Click <strong>Generate Brief</strong> or <strong>Voice Prompt</strong> to get an instant AI executive payment briefing.
-          </p>
-        </div>
-      ) : null}
+      {/* Interactive Ask Anything Input */}
+      <div className="space-y-3">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            void handleAskQuestion(customQuery);
+          }}
+          className="flex items-center gap-2"
+        >
+          <div className="relative flex-1">
+            <input
+              type="text"
+              value={customQuery}
+              onChange={(e) => setCustomQuery(e.target.value)}
+              placeholder="Ask anything about this buyer (e.g. 'What was their last promise date?')..."
+              className="w-full rounded-xl border border-slate-800 bg-slate-950/80 px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:border-sky-500 focus:outline-none shadow-inner"
+            />
+            {customQuery ? (
+              <button
+                type="button"
+                onClick={() => setCustomQuery("")}
+                className="absolute right-3 top-2.5 text-xs text-slate-400 hover:text-white"
+              >
+                ✕
+              </button>
+            ) : null}
+          </div>
+          <button
+            type="submit"
+            disabled={chatLoading || !customQuery.trim()}
+            className="rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-emerald-500/20 hover:opacity-90 disabled:opacity-50"
+          >
+            {chatLoading ? "Analyzing..." : "Ask DueBot →"}
+          </button>
+        </form>
 
-      {loading ? (
+        {/* Quick Sample Questions Chips */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-[10px] font-bold uppercase text-slate-500 mr-1">Quick Inquiries:</span>
+          {sampleQuestions.map((q) => (
+            <button
+              key={q}
+              type="button"
+              onClick={() => {
+                setCustomQuery(q);
+                void handleAskQuestion(q);
+              }}
+              className="rounded-lg border border-slate-800 bg-slate-900/90 px-2.5 py-1 text-[11px] text-slate-300 hover:border-sky-500/40 hover:bg-slate-800 hover:text-white transition-all shadow-sm"
+            >
+              {q}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Loading Spinners */}
+      {chatLoading ? (
         <div className="py-6 text-center space-y-2">
-          <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-sky-400 border-t-transparent" />
-          <p className="text-xs text-slate-400 font-mono">Synthesizing payment history & audit trail facts...</p>
+          <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-emerald-400 border-t-transparent" />
+          <p className="text-xs text-slate-400 font-mono">Querying database facts & synthesizing answer...</p>
         </div>
       ) : null}
 
-      {brief ? (
+      {/* Interactive Answer Box */}
+      {chatResponse ? (
+        <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/20 p-4 space-y-3 shadow-lg">
+          <div className="flex items-center justify-between">
+            <span className="inline-flex rounded-full bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-0.5 text-[10px] font-extrabold uppercase text-emerald-400">
+              {chatResponse.category}
+            </span>
+            <button
+              type="button"
+              onClick={() => handleSpeak(chatResponse.spoken_answer)}
+              className="text-[11px] font-bold text-emerald-400 hover:underline flex items-center gap-1"
+            >
+              <span>🔊 Listen</span>
+            </button>
+          </div>
+          <p className="text-xs text-slate-100 leading-relaxed font-medium whitespace-pre-line">
+            {chatResponse.answer}
+          </p>
+          {chatResponse.suggested_action ? (
+            <div className="rounded-lg border border-emerald-500/20 bg-slate-900/60 p-2.5 text-xs text-emerald-300 flex items-center gap-2">
+              <span className="font-bold">Next Step:</span>
+              <span>{chatResponse.suggested_action}</span>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {/* Base Executive Brief Summary Card */}
+      {brief && !chatResponse ? (
         <div className="space-y-4 pt-1">
-          {/* Executive Summary Card */}
           <div className="rounded-xl border border-slate-800/80 bg-slate-950/60 p-4 leading-relaxed font-sans text-xs text-slate-200 shadow-inner">
             <p className="font-medium text-slate-100">{brief.summary}</p>
           </div>
 
-          {/* Structured Guidance Badges */}
           <div className="grid gap-3 md:grid-cols-2">
             <div className="rounded-xl border border-amber-500/20 bg-amber-950/20 p-3 text-xs space-y-1">
               <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-400">
