@@ -165,8 +165,16 @@ async def seed_from_generator(
                     extra_metadata={"event": "aged"},
                 )
             )
-            if state.value in ("nudged", "replied", "promised", "disputed", "opted_out", "recovered"):
-                nudge_dt = min(due_dt + timedelta(days=min(max(inv.days_overdue, 1), 5)), now_utc - timedelta(hours=2))
+            if state.value in (
+                "nudged",
+                "replied",
+                "promised",
+                "disputed",
+                "opted_out",
+                "recovered",
+            ):
+                nudge_offset = timedelta(days=min(max(inv.days_overdue, 1), 5))
+                nudge_dt = min(due_dt + nudge_offset, now_utc - timedelta(hours=2))
                 session.add(
                     AuditLog(
                         invoice_id=inv.invoice_id,
@@ -174,13 +182,15 @@ async def seed_from_generator(
                         to_state="nudged",
                         actor="agent",
                         occurred_at=nudge_dt,
-                        reasoning_summary="automated WhatsApp payment reminder sent with Razorpay link",
+                        reasoning_summary=(
+                            "automated WhatsApp payment reminder sent with Razorpay link"
+                        ),
                         extra_metadata={"event": "nudge_sent", "attempt_number": 1},
                     )
                 )
     await session.flush()
 
-    # Normalize synthetic message timestamps to be safely in the past (before current live interactions)
+    # Normalize synthetic message timestamps to be safely in the past
     attempt_by_invoice: dict[str, int] = {}
     for msg in gen.messages:
         if msg.direction == "outbound":
@@ -190,7 +200,7 @@ async def seed_from_generator(
             attempt = attempt_by_invoice.get(msg.invoice_id, 1)
 
         raw_dt = _dt(msg.timestamp)
-        # Cap synthetic message timestamp to at least 1 hour in the past so live tests always rank #1
+        # Cap synthetic message timestamp to past so live tests always rank #1
         msg_sent_at = min(raw_dt, now_utc - timedelta(hours=2))
 
         session.add(

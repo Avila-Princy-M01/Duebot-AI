@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
-from uuid import uuid4
-
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -13,7 +10,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.dependencies import get_db, reply_parser
 from backend.engine.states import InvalidTransitionError
 from backend.exceptions import NotFoundError
-from backend.integrations.whatsapp import INBOX, SimulatedMessage
 from backend.llm.reply_parser import ReplyParser
 from backend.models.buyer import Buyer
 from backend.models.interaction import Interaction
