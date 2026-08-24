@@ -55,3 +55,19 @@ class BuyerDetail(BuyerOut):
     email: str
     gstin: str
     invoices: list[BuyerInvoiceSummary]
+
+
+class BuyerBriefOut(BaseModel):
+    """AI Executive Briefing for a buyer."""
+
+    buyer_id: str
+    company_name: str
+    contact_name: str
+    summary: str
+    spoken_summary: str
+    risk_assessment: str
+    recommended_action: str
+    total_outstanding_inr: str
+    open_invoices_count: int
+    model: str
+

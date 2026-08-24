@@ -30,7 +30,11 @@ export default function InvoiceDetailPage({ params }: InvoiceDetailPageProps) {
         <div>
           <h1 className="text-2xl font-extrabold text-white">{invoice.invoice_number}</h1>
           <p className="mt-1 text-xs text-slate-400">
-            State: <span className="font-bold text-sky-400">{invoice.state}</span> · Risk: <span className="font-bold text-amber-400">{invoice.risk_tier}</span> · {invoice.days_overdue} days overdue
+            State: <span className="font-bold text-sky-400">{invoice.state}</span> · Risk:{" "}
+            <span className="font-bold text-amber-400">{invoice.risk_tier}</span> · {invoice.days_overdue} days overdue ·{" "}
+            <a href={`/buyers/${invoice.buyer_id}`} className="text-sky-400 font-semibold hover:underline">
+              🎙️ Buyer Brief →
+            </a>
           </p>
         </div>
         <div className="font-mono text-2xl font-extrabold text-white">

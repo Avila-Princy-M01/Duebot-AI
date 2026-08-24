@@ -116,3 +116,17 @@ export interface NudgePreview {
   current_state: string;
   target_event: string;
 }
+
+export interface BuyerBrief {
+  buyer_id: string;
+  company_name: string;
+  contact_name: string;
+  summary: string;
+  spoken_summary: string;
+  risk_assessment: string;
+  recommended_action: string;
+  total_outstanding_inr: string;
+  open_invoices_count: number;
+  model: string;
+}
+

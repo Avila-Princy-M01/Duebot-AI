@@ -1,3 +1,4 @@
+import { BuyerVoiceBriefing } from "../../../components/buyers/BuyerVoiceBriefing";
 import { getBuyer } from "../../../lib/api";
 
 interface BuyerDetailPageProps {
@@ -16,6 +17,9 @@ export default async function BuyerDetailPage({ params }: BuyerDetailPageProps) 
           <span className="font-bold text-emerald-400">{(buyer.on_time_payment_rate * 100).toFixed(0)}% on-time</span>
         </p>
       </div>
+
+      {/* Scoped Read-Only AI Voice Briefing */}
+      <BuyerVoiceBriefing buyerId={buyer.buyer_id} />
 
       <div className="rounded-2xl border border-slate-800/80 bg-panel/70 p-6 backdrop-blur-md space-y-3">
         <h3 className="text-sm font-bold text-white">Associated Invoices</h3>

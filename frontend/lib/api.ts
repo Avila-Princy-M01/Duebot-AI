@@ -51,6 +51,10 @@ export async function getBuyer(id: string): Promise<Envelope<BuyerRow & { invoic
   return request(`/api/buyers/${id}`);
 }
 
+export async function getBuyerBrief(buyerId: string): Promise<Envelope<import("./types").BuyerBrief>> {
+  return request<Envelope<import("./types").BuyerBrief>>(`/api/buyers/${buyerId}/brief`);
+}
+
 export async function listAudit(invoiceId?: string): Promise<Envelope<AuditRow[]>> {
   const q = invoiceId ? `?invoice_id=${encodeURIComponent(invoiceId)}&limit=100` : "?limit=100";
   return request<Envelope<AuditRow[]>>(`/api/audit${q}`);

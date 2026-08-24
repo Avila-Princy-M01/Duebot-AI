@@ -11,6 +11,7 @@ from backend.config import Settings, get_settings
 from backend.integrations.email_sender import EmailSender
 from backend.integrations.razorpay import RazorpayClient
 from backend.integrations.whatsapp import WhatsAppSender
+from backend.llm.buyer_briefer import BuyerBriefer
 from backend.llm.client import AnthropicClient
 from backend.llm.message_drafter import MessageDrafter
 from backend.llm.reply_parser import ReplyParser
@@ -61,3 +62,8 @@ def reply_parser(client: AnthropicClient = Depends(anthropic_client)) -> ReplyPa
 def message_drafter(client: AnthropicClient = Depends(anthropic_client)) -> MessageDrafter:
     """Message drafter."""
     return MessageDrafter(client)
+
+
+def buyer_briefer(client: AnthropicClient = Depends(anthropic_client)) -> BuyerBriefer:
+    """Buyer brief summarizer."""
+    return BuyerBriefer(client)
