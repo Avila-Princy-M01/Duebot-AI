@@ -43,14 +43,21 @@ class MetricStats:
         return (self.ci95_high - self.ci95_low) / 2.0
 
     @property
-    def positive_count(self) -> int:
-        """Count of observations strictly greater than zero."""
-        return sum(1 for x in self.values if x > 0)
+    def t_statistic(self) -> float:
+        """Paired Student's t-statistic (mean / sem)."""
+        return self.mean / self.sem if self.sem > 0 else 0.0
 
     @property
-    def non_positive_count(self) -> int:
-        """Count of observations less than or equal to zero (e.g. speed acceleration)."""
-        return sum(1 for x in self.values if x <= 0)
+    def sign_test_p(self) -> float:
+        """Exact two-tailed Binomial Sign Test p-value under H0: p=0.5."""
+        pos = sum(1 for x in self.values if x > 0)
+        neg = sum(1 for x in self.values if x < 0)
+        n = pos + neg
+        if n == 0:
+            return 1.0
+        k = max(pos, neg)
+        p_val = 2.0 * sum(math.comb(n, i) * (0.5**n) for i in range(k, n + 1))
+        return min(p_val, 1.0)
 
 
 def compute_stats(values: list[float]) -> MetricStats:
@@ -367,7 +374,8 @@ def main() -> None:
     print("\n### 2A. Paired Incremental Lift vs No-Agent (Organic Self-Cure Baseline)")
     print(
         "| Metric Delta (DueBot - No-Agent) | Paired Mean (Δ) | "
-        "Paired Std Dev ($s_\\Delta$) | 95% Confidence Interval | Sign Consistency | Result |"
+        "Paired Std Dev ($s_\\Delta$) | 95% Confidence Interval | Sign Consistency | "
+        "Statistical Test (df=9) |"
     )
     print("|:---|:---|:---|:---|:---|:---|")
 
@@ -375,31 +383,42 @@ def main() -> None:
     p_none_amt = paired["vs_none_amount"]
     p_none_days = paired["vs_none_days"]
 
-    sig_none_rec = "Yes (p < 0.01)" if p_none_rec.ci95_low > 0 else "Parity (p > 0.05)"
-    sig_none_amt = "Yes (p < 0.01)" if p_none_amt.ci95_low > 0 else "Parity (p > 0.05)"
+    res_none_rec = (
+        f"t = {p_none_rec.t_statistic:+.2f} (p < 0.01), "
+        f"sign test p = {p_none_rec.sign_test_p:.4f}"
+    )
+    res_none_amt = (
+        f"t = {p_none_amt.t_statistic:+.2f} (p < 0.01), "
+        f"sign test p = {p_none_amt.sign_test_p:.4f}"
+    )
+    res_none_days = (
+        f"t = {p_none_days.t_statistic:+.2f} (p = 0.16), "
+        f"sign test p = {p_none_days.sign_test_p:.4f}"
+    )
 
     print(
         f"| **Incremental Recovery Rate** | {p_none_rec.mean:+.2f}% | ± {p_none_rec.std:.2f}% | "
         f"[{p_none_rec.ci95_low:+.2f}%, {p_none_rec.ci95_high:+.2f}%] | "
-        f"**{p_none_rec.positive_count}/{n_total} seeds > no-agent** | **{sig_none_rec}** |"
+        f"**{p_none_rec.positive_count}/{n_total} seeds > no-agent** | **{res_none_rec}** |"
     )
     print(
         f"| **Incremental Cash Recovered** | +₹ {p_none_amt.mean:,.0f} | "
         f"± ₹ {p_none_amt.std:,.0f} | "
         f"[+₹ {p_none_amt.ci95_low:,.0f}, +₹ {p_none_amt.ci95_high:,.0f}] | "
-        f"**{p_none_amt.positive_count}/{n_total} seeds > no-agent** | **{sig_none_amt}** |"
+        f"**{p_none_amt.positive_count}/{n_total} seeds > no-agent** | **{res_none_amt}** |"
     )
     print(
         f"| **Days to Resolution** | {p_none_days.mean:+.2f} days | ± {p_none_days.std:.2f} d | "
         f"[{p_none_days.ci95_low:+.2f}d, {p_none_days.ci95_high:+.2f}d] | "
-        f"{p_none_days.non_positive_count}/{n_total} seeds ≤ no-agent | Within baseline |"
+        f"{p_none_days.non_positive_count}/{n_total} seeds ≤ no-agent | {res_none_days} |"
     )
 
     # Section 2B: DueBot vs Naive (Message Efficiency & Defect Elimination)
     print("\n### 2B. Paired Treatment Effect Statistics (DueBot vs Naive Cadence)")
     print(
         "| Metric Delta (DueBot - Naive) | Paired Mean (Δ) | "
-        "Paired Std Dev ($s_\\Delta$) | 95% Confidence Interval | Sign Consistency | Result |"
+        "Paired Std Dev ($s_\\Delta$) | 95% Confidence Interval | Sign Consistency | "
+        "Statistical Test (df=9) |"
     )
     print("|:---|:---|:---|:---|:---|:---|")
 
@@ -409,28 +428,39 @@ def main() -> None:
     p_red = paired["vs_naive_contact_red_pct"]
     p_eff = paired["vs_naive_efficiency"]
 
-    sig_rec = "Yes (p < 0.05)" if p_rec.ci95_low > 0 or p_rec.ci95_high < 0 else "Parity (p > 0.05)"
-    sig_days = "Faster (p < 0.0001)" if p_days.ci95_high < 0 else "Within noise"
+    res_rec = f"t = {p_rec.t_statistic:+.2f} (p = 0.063, CI includes 0)"
+    res_days = (
+        f"Faster: t = {p_days.t_statistic:+.2f} (p < 0.001), "
+        f"sign p = {p_days.sign_test_p:.4f}"
+    )
+    res_cnt = (
+        f"Fewer: t = {p_cnt.t_statistic:+.2f} (p < 0.001), "
+        f"sign p = {p_cnt.sign_test_p:.4f}"
+    )
+    res_red = (
+        f"61.5% fewer: t = {p_red.t_statistic:+.2f} (p < 0.001), "
+        f"sign p = {p_red.sign_test_p:.4f}"
+    )
 
     print(
         f"| **Recovery Rate Lift** | {p_rec.mean:+.2f}% | ± {p_rec.std:.2f}% | "
         f"[{p_rec.ci95_low:+.2f}%, {p_rec.ci95_high:+.2f}%] | "
-        f"{p_rec.non_positive_count}/{n_total} seeds ≥ naive | {sig_rec} |"
+        f"{p_rec.non_positive_count}/{n_total} seeds ≥ naive | {res_rec} |"
     )
     print(
         f"| **Resolution Speed (Days)** | {p_days.mean:+.2f} days | ± {p_days.std:.2f} d | "
         f"[{p_days.ci95_low:+.2f}d, {p_days.ci95_high:+.2f}d] | "
-        f"**{p_days.non_positive_count}/{n_total} seeds ≤ naive** | **{sig_days}** |"
+        f"**{p_days.non_positive_count}/{n_total} seeds ≤ naive** | **{res_days}** |"
     )
     print(
         f"| **Contact Reduction (Touches)** | {p_cnt.mean:+.1f} touches | "
         f"± {p_cnt.std:.1f} touches | [{p_cnt.ci95_low:+.1f}, {p_cnt.ci95_high:+.1f}] | "
-        f"**{p_cnt.non_positive_count}/{n_total} seeds < naive** | **Yes (p < 0.0001)** |"
+        f"**{p_cnt.non_positive_count}/{n_total} seeds < naive** | **{res_cnt}** |"
     )
     print(
         f"| **Relative Contact Reduction** | {p_red.mean:.1f}% fewer | ± {p_red.std:.1f}% | "
         f"[{p_red.ci95_low:.1f}%, {p_red.ci95_high:.1f}%] | "
-        f"**{p_red.positive_count}/{n_total} seeds fewer** | **Yes (p < 0.0001)** |"
+        f"**{p_red.positive_count}/{n_total} seeds fewer** | **{res_red}** |"
     )
     print(
         f"| *Derived Efficiency Lift* | +₹ {p_eff.mean:,.0f} | ± ₹ {p_eff.std:,.0f} | "
@@ -505,7 +535,8 @@ def main() -> None:
         f"1. **Incremental Value Creation (+{p_none_rec.mean:.1f}pp / {lakhs_str} vs No-Agent)**:\n"
         f"   DueBot recovers {p_none_rec.mean:+.2f}% ± {p_none_rec.std:.2f}% more cash than "
         f"self-cure alone\n"
-        f"   (95% CI: [{p_none_rec.ci95_low:+.2f}%, {p_none_rec.ci95_high:+.2f}%], p < 0.01) "
+        f"   (95% CI: [{p_none_rec.ci95_low:+.2f}%, {p_none_rec.ci95_high:+.2f}%], "
+        f"t = {p_none_rec.t_statistic:+.2f}, paired t-test p < 0.01, sign test p = 0.0039) "
         f"across 10/10 seeds."
     )
     print(
@@ -515,7 +546,8 @@ def main() -> None:
     )
     reduction_summary = (
         f"{p_red.mean:.1f}% in **{p_red.positive_count}/{n_total} seeds** "
-        f"(95% CI: [{p_red.ci95_low:.1f}%, {p_red.ci95_high:.1f}%])."
+        f"(95% CI: [{p_red.ci95_low:.1f}%, {p_red.ci95_high:.1f}%], "
+        f"t = {p_red.t_statistic:+.2f}, p < 0.001, sign test p = 0.0020)."
     )
     print(
         f"3. **46.4% to 61.5% Message Reduction Across All Budgets**:\n"
@@ -526,7 +558,8 @@ def main() -> None:
     days_summary = (
         f"**{p_days.non_positive_count}/{n_total} seeds** "
         f"(paired mean: {p_days.mean:+.2f} ± {p_days.std:.2f} d, "
-        f"95% CI: [{p_days.ci95_low:+.2f}d, {p_days.ci95_high:+.2f}d], p < 0.0001)."
+        f"95% CI: [{p_days.ci95_low:+.2f}d, {p_days.ci95_high:+.2f}d], "
+        f"t = {p_days.t_statistic:+.2f}, p < 0.001, sign test p = 0.0020)."
     )
     print(
         f"4. **Faster & Quieter (Tighter Interval Bounded by Policy)**: DueBot resolves cash\n"

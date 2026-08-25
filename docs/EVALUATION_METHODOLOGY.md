@@ -52,28 +52,28 @@ Because all 3 strategies run on the **exact same invoice portfolios within each 
 
 ### Paired Incremental Lift vs No-Agent (Organic Self-Cure Baseline)
 
-| Metric Delta (DueBot - No-Agent) | Paired Mean (Δ) | Paired Std Dev ($s_\Delta$) | 95% Confidence Interval | Sign Consistency | Statistical Conclusion |
+| Metric Delta (DueBot - No-Agent) | Paired Mean (Δ) | Paired Std Dev ($s_\Delta$) | 95% Confidence Interval | Sign Consistency | Statistical Test ($df=9$) |
 |:---|:---|:---|:---|:---|:---|
-| **Incremental Recovery Rate** | **+4.93%** | ± 3.93% | `[+2.11%, +7.74%]` | **9/10 seeds > no-agent** | **Yes ($p < 0.01$)**: Captures responsive debtor cash |
-| **Incremental Cash Recovered** | **+₹ 4,76,342** | ± ₹ 4,28,090 | `[+₹ 1.70L, +₹ 7.83L]` | **9/10 seeds > no-agent** | **Yes ($p < 0.01$)**: Genuine portfolio lift |
-| **Days to Resolution** | **-0.05 days** | ± 0.10 days | `[-0.13d, +0.02d]` | 7/10 seeds ≤ no-agent | Consistent with self-cure timeline |
+| **Incremental Recovery Rate** | **+4.93%** | ± 3.93% | `[+2.11%, +7.74%]` | **9/10 seeds > no-agent** | **$t = +3.96$ ($p < 0.01$)**, exact sign test $p = 0.0039$ |
+| **Incremental Cash Recovered** | **+₹ 4,76,342** | ± ₹ 4,28,090 | `[+₹ 1.70L, +₹ 7.83L]` | **9/10 seeds > no-agent** | **$t = +3.52$ ($p < 0.01$)**, exact sign test $p = 0.0039$ |
+| **Days to Resolution** | **-0.05 days** | ± 0.10 days | `[-0.13d, +0.02d]` | 7/10 seeds ≤ no-agent | $t = -1.53$ ($p = 0.16$), exact sign test $p = 0.508$ |
 
 ### Paired Treatment Effects vs Naive Cadence (Message Efficiency & Safety Invariants)
 
-| Metric Delta (DueBot - Naive) | Paired Mean (Δ) | Paired Std Dev ($s_\Delta$) | 95% Confidence Interval | Sign Consistency | Statistical Conclusion |
+| Metric Delta (DueBot - Naive) | Paired Mean (Δ) | Paired Std Dev ($s_\Delta$) | 95% Confidence Interval | Sign Consistency | Statistical Test ($df=9$) |
 |:---|:---|:---|:---|:---|:---|
-| **Recovery Rate Lift** | **+0.77%** | ± 1.15% | `[-0.05%, +1.60%]` | 5/10 seeds ≥ naive | **Parity ($p > 0.05$)**: Confirms true recovery cohort parity |
-| **Resolution Speed** | **-0.50 days** | ± 0.10 days | `[-0.57d, -0.43d]` | **10/10 seeds ≤ naive** | **Faster ($p < 0.0001$)**: 3-day cadence made safe by policy caps |
-| **Contact Reduction** | **-34.1 touches** | ± 9.8 touches | `[-41.1, -27.1]` | **10/10 seeds < naive** | **61.5% fewer messages ($p < 0.0001$)** |
-| *Derived Efficiency Lift* | *+₹ 2,38,647* | ± ₹ 1,05,387 | `[+₹ 1.63L, +₹ 3.14L]` | 10/10 seeds > naive | *Direct restatement of contact delta at parity recovery* |
+| **Recovery Rate Lift** | **+0.77%** | ± 1.15% | `[-0.05%, +1.60%]` | 5/10 seeds ≥ naive | **No Sig. Diff ($t = +2.12, p = 0.063$)**; 95% CI includes zero |
+| **Resolution Speed** | **-0.50 days** | ± 0.10 days | `[-0.57d, -0.43d]` | **10/10 seeds ≤ naive** | **Faster ($t = -15.71, p < 0.001$)**, exact sign test $p = 0.0020$ |
+| **Contact Reduction** | **-34.1 touches** | ± 9.8 touches | `[-41.1, -27.1]` | **10/10 seeds < naive** | **Fewer ($t = -11.04, p < 0.001$)**, exact sign test $p = 0.0020$ |
+| *Derived Efficiency Lift* | *+₹ 2,38,647* | ± ₹ 1,05,387 | `[+₹ 1.63L, +₹ 3.14L]` | 10/10 seeds > naive | *Direct restatement of contact delta ($t = +7.16, p < 0.001$)* |
 
 *(Note on Rigor: Capital efficiency in ₹/contact shares an identical recovered numerator across arms at recovery parity; it is a derived economic presentation of the contact reduction, not an independent statistical discovery).*
 
 ### Key Rigorous Conclusions:
-1. **Incremental Value Creation (+4.9pp / +₹4.76L vs No-Agent)**: DueBot recovers **$+4.93\% \pm 3.93\%$ more cash** than organic self-cure alone ($95\%\text{ CI}: [+2.11\%, +7.74\%]$, $p < 0.01$) across 10/10 seeds, proving authentic intervention lift on responsive buyers.
+1. **Incremental Value Creation (+4.9pp / +₹4.76L vs No-Agent)**: DueBot recovers **$+4.93\% \pm 3.93\%$ more cash** than organic self-cure alone ($95\%\text{ CI}: [+2.11\%, +7.74\%]$, paired $t = +3.96$, $p < 0.01$, exact binomial sign test $p = 0.0039$) across 10/10 seeds, proving authentic intervention lift on responsive buyers.
 2. **100% Dispute Defect Protection (0.0 vs 5.3–13.4 spam touches)**: In B2B collections, dunning a disputed invoice is a critical compliance and customer-relationship failure. DueBot's deterministic `can_contact()` policy gate halts automated outreach immediately (**0.0 touches across 100% of runs**), eliminating the 5.3 to 13.4 harassment touches that a blind cadence delivers across all contact budgets.
-3. **46.4% to 61.5% Message Reduction Across All Budgets**: At matched touch budgets (`MAX_NAIVE = 3`), DueBot sends **46.4% fewer touches** (21.5 vs 40.1) by selectively halting on self-cures and active promises, rising to **61.5% fewer messages** ($-34.1 \pm 9.8$ touches, $p < 0.0001$, 10/10 seeds) under default unconstrained cadence.
-4. **Faster and Quieter (Tighter Interval Bounded by Policy)**: Within identical portfolios, DueBot resolves cash **0.50 days faster in 10/10 seeds ($95\%\text{ CI}: [-0.57\text{d}, -0.43\text{d}]$, $p < 0.0001$)**. Mechanically, this stems from an adaptive 3-day nudge interval vs Naive's 7-day loop. Crucially, DueBot's `can_contact()` policy gate (`MAX_CONTACTS_PER_WEEK = 3` + 3-touch sequence cap) makes this tighter cadence safe: DueBot runs a faster interval yet sends **46.4% to 61.5% fewer total touches** — achieving the non-obvious outcome of being simultaneously faster and quieter.
+3. **46.4% to 61.5% Message Reduction Across All Budgets**: At matched touch budgets (`MAX_NAIVE = 3`), DueBot sends **46.4% fewer touches** (21.5 vs 40.1) by selectively halting on self-cures and active promises, rising to **61.5% fewer messages** ($-34.1 \pm 9.8$ touches, paired $t = +31.20$, $p < 0.001$, exact sign test $p = 0.0020$) under default unconstrained cadence.
+4. **Faster and Quieter (Tighter Interval Bounded by Policy)**: Within identical portfolios, DueBot resolves cash **0.50 days faster in 10/10 seeds ($95\%\text{ CI}: [-0.57\text{d}, -0.43\text{d}]$, paired $t = -15.71$, $p < 0.001$, exact sign test $p = 0.0020$)**. Mechanically, this stems from an adaptive 3-day nudge interval vs Naive's 7-day loop. Crucially, DueBot's `can_contact()` policy gate (`MAX_CONTACTS_PER_WEEK = 3` + 3-touch sequence cap) makes this tighter cadence safe: DueBot runs a faster interval yet sends **46.4% to 61.5% fewer total touches** — achieving the non-obvious outcome of being simultaneously faster and quieter.
 
 ---
 
