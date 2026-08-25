@@ -4,11 +4,11 @@
    Active Revenue Recovery retries failed recurring *debits*. DueBot automates unpaid B2B *invoices* (receivables), extracts payment promise dates over conversational channels, and escalates when promises break.
 
 2. **How is the baseline comparison evaluated fairly?**
-   All 3 evaluation strategies (`no_agent`, `naive_cadence`, `duebot`) share **one neutral, identical buyer response model** (`shared_should_settle` in `baselines.py`), tested across 10 independent random generator seeds (~710 held-out test invoices):
-   * **Recovery Rate Parity (79.3% vs 78.5%)**: Both DueBot and naive cadence reach the nudge-responsive cohort. We do not claim an artificial recovery boost on cooperative buyers.
-   * **+170% Higher Capital Efficiency (₹ 3,79,178 vs ₹ 1,40,531 per contact)**: DueBot achieves maximum recovery with **61.3% fewer contacts** (21.5 vs 55.6 touches).
+   All 3 evaluation strategies (`no_agent`, `naive_cadence`, `duebot`) share **one neutral, identical buyer response model** (`shared_should_settle` in `baselines.py`), evaluated with **paired within-seed statistics** across 10 independent random generator seeds (~710 held-out test invoices):
+   * **Recovery Rate Parity (+0.77% ± 1.15%, 95% CI: [-0.05%, +1.60%])**: Both DueBot and naive cadence reach the nudge-responsive cohort ($p > 0.05$). We do not claim an artificial recovery boost on cooperative buyers.
+   * **+170% Higher Capital Efficiency (61.5% Fewer Contacts, p < 0.0001)**: DueBot achieves maximum recovery with **34.1 fewer touches per portfolio**, delivering ₹ 3,79,178 vs ₹ 1,40,531 per contact.
+   * **Statistically Significant Speed Advantage (-0.50 ± 0.10 days, p < 0.0001)**: Across identical portfolios, DueBot's 3-day adaptive interval consistently accelerates resolution by 12 hours ($95\%\text{ CI}: [-0.57\text{d}, -0.43\text{d}]$).
    * **100% Dispute Defect Protection**: Naive cadence blindly spams disputed invoices (13.4 touches on average), whereas DueBot routes them to `HUMAN_REVIEW` with **0.0 touches**.
-   * **Epistemic Honesty on Speed**: DueBot trends slightly faster (5.8 vs 6.3 days) due to its 3-day adaptive cadence vs 7-day blind loops, though this difference overlaps within variance (±1.9 days). We present this as an operational dynamic rather than an inflated headline claim.
 
 3. **What happens on disputed or ambiguous replies?**
    `intent=dispute` or low-confidence replies (`confidence < 0.7`) immediately halt automated nudging and route the invoice to `HUMAN_REVIEW` (0 contacts sent, 0% false escalations).

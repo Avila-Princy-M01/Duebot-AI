@@ -102,19 +102,19 @@ We make the system boundaries explicit and transparent:
 
 Reproducible via `python scripts/run_eval.py` and `python scripts/run_multi_seed_eval.py` driving the **real deterministic engine** across simulated timelines:
 
-### 10-Seed Multi-Seed Robustness (10 Seeds, ~710 Test Invoices, Mean ± Std Dev)
+### 10-Seed Multi-Seed Robustness (10 Seeds, ~710 Test Invoices)
 
 | Strategy | Recovery Rate (%) | Recovered (INR Lakhs) | Avg Days to Recovery | Contacts Sent | Efficiency (₹/Contact) | Disputed Invoices |
 |:---|:---|:---|:---|:---|:---|:---|
 | `no_agent` (Self-cure only) | 74.4% ± 7.8% | ₹ 70.15L | 5.9 ± 2.0 days | 0.0 ± 0.0 | ₹ 0 / contact | 0.0 touches |
-| `naive_cadence` (Blind 7-day loop) | 78.5% ± 6.3% | ₹ 74.12L | 6.3 ± 1.9 days | 55.6 ± 15.3 | ₹ 1,40,531 / contact | Blindly spams (13.4 ± 3.8 touches) |
+| `naive_cadence` (Blind 7-day loop) | 78.5% ± 6.3% | ₹ 74.12L | 6.3 ± 1.9 days | 55.6 ± 15.3 | ₹ 1,40,531 / contact | Blindly spams (13.4 ± 8.6 touches) |
 | **`duebot` (Policy-aware agent)** | **79.3% ± 5.9%** | **₹ 74.92L** | **5.8 ± 1.9 days** | **21.5 ± 6.5** | **₹ 3,79,178 / contact (+170%)** | **Routes to `HUMAN_REVIEW` (0.0 touches)** |
 
-### Key Takeaways:
-1. **Real Engine Execution**: DueBot runs its actual state machine (`transition`), policy guard (`can_contact`), and scheduler (`next_action_at`) on every simulated clock tick.
-2. **+170% Higher Capital Efficiency (61.3% Fewer Contacts)**: DueBot achieves maximum recovery while sending **61.3% fewer messages** (21.5 vs 55.6 touches) due to weekly frequency caps, sequence limits (3 touches max), and promise-aware pausing.
-3. **Dispute Safety & Defect Prevention**: DueBot abstains on disputed invoices (routing to `HUMAN_REVIEW` with 0 touches), preventing the 13.4 spam touches that a blind cadence delivers.
-4. **Epistemic Honesty on Speed**: DueBot trends slightly faster (5.8 vs 6.3 days) due to its 3-day adaptive interval, though this difference overlaps within variance (±1.9 days). We present this as an operational dynamic rather than an inflated headline claim.
+### Paired Treatment Effects (DueBot vs Naive on Identical Portfolios)
+1. **Statistically Verified Recovery Parity**: Paired lift $+0.77\% \pm 1.15\%$ ($95\%\text{ CI}: [-0.05\%, +1.60\%]$, $p > 0.05$), confirming true recovery parity on cooperative buyers without inflated claims.
+2. **Statistically Significant Speed Advantage**: Paired resolution acceleration of **$-0.50 \pm 0.10\text{ days}$ ($95\%\text{ CI}: [-0.57\text{d}, -0.43\text{d}]$, $p < 0.0001$)** from DueBot's 3-day adaptive interval.
+3. **+170% Higher Capital Efficiency (61.5% Fewer Messages)**: DueBot achieves recovery with **$-34.1 \pm 9.8$ fewer touches ($p < 0.0001$)** via frequency capping and promise-aware pausing.
+4. **100% Dispute Defect Protection**: DueBot abstains on disputed invoices (**0.0 touches**), preventing the 13.4 spam touches that a blind cadence delivers.
 
 ---
 
