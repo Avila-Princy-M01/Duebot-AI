@@ -192,6 +192,7 @@ def simulate_naive_cadence(
     as_of: date,
     *,
     cadence_days: int = NAIVE_CADENCE_DAYS,
+    max_contacts: int = MAX_NAIVE_CONTACTS,
 ) -> list[SnapshotInvoice]:
     """Naive baseline: fixed interval send, NO can_contact policy gate, NO dispute check."""
     out: list[SnapshotInvoice] = []
@@ -227,7 +228,7 @@ def simulate_naive_cadence(
             clock_dt = datetime.combine(clock_date, time(10, 0), tzinfo=UTC)
 
             # Blind send (no policy check): sends on disputed, exceeds weekly frequency caps
-            if len(clone.history) < MAX_NAIVE_CONTACTS:
+            if len(clone.history) < max_contacts:
                 clone.history.append(SnapshotTouch(direction="outbound", sent_at=clock_dt))
 
             # Buyer response model check (shared, neutral across all arms)
