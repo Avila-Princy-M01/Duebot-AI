@@ -78,18 +78,18 @@ export function AgingBuckets({ invoices }: AgingBucketsProps) {
           return (
             <div
               key={name}
-              className={`group relative overflow-hidden rounded-2xl border ${theme.border} bg-panel/80 p-4 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg shadow-black/30`}
+              className={`glass-card group relative overflow-hidden rounded-2xl p-4 transition-all duration-200 hover:-translate-y-1 ${theme.border}`}
             >
               <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-slate-400">{name}</p>
-                <span className={`text-[11px] font-bold ${theme.color}`}>{pct}%</span>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{name}</p>
+                <span className={`text-[11px] font-extrabold ${theme.color}`}>{pct}%</span>
               </div>
 
-              <p className={`mt-2 text-2xl font-extrabold tracking-tight ${theme.color}`}>{count}</p>
+              <p className={`mt-2 text-2xl font-extrabold tracking-tight text-white`}>{count}</p>
 
-              <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
+              <div className="mt-3.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-900 shadow-inner">
                 <div
-                  className={`h-full rounded-full ${theme.bar} transition-all duration-500`}
+                  className={`h-full rounded-full ${theme.bar} shadow-sm transition-all duration-500`}
                   style={{ width: `${barPct}%` }}
                 />
               </div>

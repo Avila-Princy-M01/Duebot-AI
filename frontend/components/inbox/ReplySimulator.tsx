@@ -53,22 +53,22 @@ export function ReplySimulator({ onReplyInjected }: ReplySimulatorProps) {
   };
 
   return (
-    <div className="rounded-2xl border border-slate-800/80 bg-panel/80 p-6 backdrop-blur-md shadow-xl space-y-4">
-      <div className="flex items-center gap-2">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <div className="glass-panel rounded-3xl p-6 sm:p-8 space-y-5">
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-500/15 text-indigo-400 border border-indigo-400/30 shadow-md shadow-indigo-500/10">
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
           </svg>
         </div>
         <div>
-          <h3 className="text-sm font-bold text-white">Live WhatsApp Reply Test Bench</h3>
-          <p className="text-xs text-slate-400">Simulate incoming buyer WhatsApp replies to test intent classification & state transitions.</p>
+          <h3 className="text-base font-extrabold text-white">Live WhatsApp Reply Test Bench</h3>
+          <p className="text-xs text-slate-300">Simulate incoming buyer WhatsApp replies to evaluate zero-shot intent classification & state safety transitions.</p>
         </div>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-3">
         <div>
-          <label htmlFor="target-invoice-id-input" className="block text-[11px] font-semibold uppercase text-slate-400 mb-1">
+          <label htmlFor="target-invoice-id-input" className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
             Target Invoice ID
           </label>
           <input
@@ -77,12 +77,12 @@ export function ReplySimulator({ onReplyInjected }: ReplySimulatorProps) {
             value={invoiceId}
             onChange={(e) => setInvoiceId(e.target.value)}
             aria-label="Target Invoice ID"
-            className="w-full rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-xs font-mono text-white focus:border-indigo-500 focus:outline-none"
+            className="glass-input w-full rounded-2xl px-3.5 py-2.5 text-xs font-mono text-white focus:outline-none"
           />
         </div>
 
         <div className="md:col-span-2">
-          <label htmlFor="incoming-reply-text-input" className="block text-[11px] font-semibold uppercase text-slate-400 mb-1">
+          <label htmlFor="incoming-reply-text-input" className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
             Incoming Buyer WhatsApp Reply Text
           </label>
           <div className="flex gap-2">
@@ -93,14 +93,14 @@ export function ReplySimulator({ onReplyInjected }: ReplySimulatorProps) {
               value={replyText}
               onChange={(e) => setReplyText(e.target.value)}
               aria-label="Incoming Buyer WhatsApp Reply Text"
-              className="flex-1 rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
+              className="glass-input flex-1 rounded-2xl px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none"
             />
             <button
               type="button"
               disabled={busy || !invoiceId.trim() || !replyText.trim()}
               onClick={() => void handleInject()}
               aria-label="Process simulated reply"
-              className="rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 px-4 py-2 text-xs font-bold text-white shadow-lg shadow-indigo-500/20 hover:scale-[1.02] disabled:opacity-50"
+              className="rounded-2xl bg-gradient-to-r from-indigo-500 via-purple-600 to-pink-600 px-5 py-2.5 text-xs font-bold text-white shadow-lg shadow-indigo-500/25 hover:scale-105 transition-all disabled:opacity-50"
             >
               {busy ? "Processing..." : "Process Reply →"}
             </button>
@@ -109,13 +109,13 @@ export function ReplySimulator({ onReplyInjected }: ReplySimulatorProps) {
       </div>
 
       <div className="flex flex-wrap items-center gap-2 pt-1">
-        <span className="text-[11px] font-semibold text-slate-500">Preset Samples:</span>
+        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mr-1">Preset Samples:</span>
         {PRESETS.map((p) => (
           <button
             key={p.label}
             type="button"
             onClick={() => setReplyText(p.text)}
-            className="rounded-lg border border-slate-800 bg-slate-900/60 px-2.5 py-1 text-[11px] font-medium text-slate-300 hover:border-indigo-500/40 hover:text-white transition-all"
+            className="glass-card rounded-xl px-3 py-1.5 text-[11px] font-semibold text-slate-300 hover:border-indigo-400/40 hover:text-white transition-all shadow-sm"
           >
             {p.label}
           </button>

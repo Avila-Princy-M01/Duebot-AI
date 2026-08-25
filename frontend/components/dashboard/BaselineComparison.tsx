@@ -22,47 +22,47 @@ export function BaselineComparison({ rows }: BaselineComparisonProps) {
           return (
             <div
               key={row.id}
-              className={`relative overflow-hidden rounded-2xl border ${
+              className={`relative overflow-hidden rounded-3xl p-6 transition-all duration-300 hover:-translate-y-1.5 ${
                 isDuebot
-                  ? "border-sky-500/40 bg-gradient-to-b from-sky-950/40 via-panel to-panel shadow-2xl shadow-sky-950/40"
-                  : "border-slate-800/80 bg-panel/70"
-              } p-6 backdrop-blur-md transition-all hover:-translate-y-1`}
+                  ? "glass-card-glow border-sky-400/40"
+                  : "glass-card border-white/[0.08]"
+              }`}
             >
               {isDuebot ? (
-                <div className="absolute top-0 right-0 rounded-bl-xl bg-gradient-to-r from-sky-500 to-blue-600 px-3 py-1 text-[10px] font-extrabold uppercase text-white shadow-md">
+                <div className="absolute top-0 right-0 rounded-bl-2xl bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-600 px-3.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-white shadow-lg shadow-sky-500/30">
                   ★ RECOMMENDED
                 </div>
               ) : null}
 
-              <p className="text-xs font-bold uppercase tracking-wider text-slate-400">{row.strategy.replace("_", " ")}</p>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{row.strategy.replace("_", " ")}</p>
 
               <div className="mt-4 flex items-baseline justify-between">
                 <div>
-                  <span className="text-3xl font-extrabold text-white">{pct(recRate)}</span>
-                  <span className="ml-2 text-xs text-slate-400">Recovery Rate</span>
+                  <span className={`text-3xl font-extrabold tracking-tight ${isDuebot ? "text-white" : "text-slate-200"}`}>{pct(recRate)}</span>
+                  <span className="ml-2 text-xs text-slate-400 font-medium">Recovery Rate</span>
                 </div>
               </div>
 
               {/* Progress bar */}
-              <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-slate-800">
+              <div className="mt-3.5 h-2 w-full overflow-hidden rounded-full bg-slate-900 shadow-inner">
                 <div
-                  className={`h-full rounded-full ${
+                  className={`h-full rounded-full transition-all duration-500 ${
                     isDuebot
-                      ? "bg-gradient-to-r from-sky-400 via-blue-500 to-indigo-500"
-                      : "bg-slate-600"
+                      ? "bg-gradient-to-r from-sky-400 via-blue-500 to-indigo-500 shadow-sm shadow-sky-500/50"
+                      : "bg-slate-700"
                   }`}
                   style={{ width: `${Math.round(recRate * 100)}%` }}
                 />
               </div>
 
-              <div className="mt-6 space-y-2 border-t border-slate-800/80 pt-4 text-xs">
+              <div className="mt-6 space-y-2.5 border-t border-white/[0.07] pt-4 text-xs">
                 <div className="flex items-center justify-between text-slate-400">
                   <span>30-Day Recovery:</span>
                   <span className="font-bold text-white">{pct(row.recovery_30d)}</span>
                 </div>
                 <div className="flex items-center justify-between text-slate-400">
                   <span>Avg Days to Recovery:</span>
-                  <span className="font-mono font-bold text-amber-400">
+                  <span className="font-mono font-bold text-amber-300">
                     {Number(row.avg_days_to_recovery ?? 0).toFixed(1)} days
                   </span>
                 </div>
@@ -75,7 +75,7 @@ export function BaselineComparison({ rows }: BaselineComparisonProps) {
                   <span className="font-mono font-bold text-emerald-400">₹{recValue.toLocaleString("en-IN")}</span>
                 </div>
                 <div className="flex items-center justify-between text-slate-400 pt-1">
-                  <span className="font-semibold">Capital Efficiency:</span>
+                  <span className="font-semibold text-slate-300">Capital Efficiency:</span>
                   <span className="font-mono font-extrabold text-sky-400">
                     {perContact > 0 ? `₹${Math.round(perContact).toLocaleString("en-IN")} / contact` : "N/A"}
                   </span>
@@ -87,7 +87,7 @@ export function BaselineComparison({ rows }: BaselineComparisonProps) {
       </div>
 
       {/* Comparison Table */}
-      <div className="overflow-hidden rounded-2xl border border-slate-800/80 bg-panel/60 backdrop-blur-md shadow-xl">
+      <div className="glass-panel overflow-hidden rounded-3xl">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="border-b border-slate-800 bg-panel/90 text-slate-400 font-bold uppercase tracking-wider">

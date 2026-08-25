@@ -18,20 +18,20 @@ export function Nav() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-slate-800/80 bg-ink/90 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
+    <header className="sticky top-0 z-40 border-b border-white/[0.08] bg-[#050811]/75 backdrop-blur-2xl transition-all">
+      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3.5 sm:px-6">
         <div className="flex items-center gap-4">
           <Link href="/" className="group flex items-center gap-2.5" aria-label="DueBot Home">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-sky-400 to-blue-600 shadow-lg shadow-sky-500/20 transition-transform duration-200 group-hover:scale-105">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-sky-400 via-blue-500 to-indigo-600 shadow-lg shadow-sky-500/25 transition-transform duration-200 group-hover:scale-105">
               <svg className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-base font-extrabold tracking-tight text-white">DueBot</span>
-                <span className="rounded-full bg-sky-500/10 px-2 py-0.5 text-[10px] font-bold tracking-wide text-sky-400 border border-sky-500/20">
-                  AI COLLECTIONS
+                <span className="text-base font-extrabold tracking-tight text-white group-hover:text-sky-400 transition-colors">DueBot</span>
+                <span className="rounded-full bg-gradient-to-r from-sky-500/10 to-blue-500/10 px-2.5 py-0.5 text-[10px] font-extrabold tracking-wider text-sky-400 border border-sky-400/20 shadow-sm shadow-sky-500/10">
+                  RAZORPAY AI
                 </span>
               </div>
             </div>
@@ -39,7 +39,7 @@ export function Nav() {
         </div>
 
         {/* Desktop Navigation */}
-        <nav className="hidden lg:flex items-center gap-1 rounded-xl border border-slate-800/60 bg-panel/60 p-1 text-sm backdrop-blur-md" aria-label="Main Navigation">
+        <nav className="hidden lg:flex items-center gap-1 rounded-2xl border border-white/[0.08] bg-slate-900/60 p-1.5 text-sm backdrop-blur-xl shadow-inner" aria-label="Main Navigation">
           {LINKS.map((link) => {
             const isActive = pathname === link.href || (link.href !== "/" && pathname.startsWith(link.href));
             return (
@@ -47,10 +47,10 @@ export function Nav() {
                 key={link.href}
                 href={link.href}
                 aria-current={isActive ? "page" : undefined}
-                className={`relative rounded-lg px-3 py-1.5 text-xs font-semibold transition-all duration-200 ${
+                className={`relative rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all duration-200 ${
                   isActive
-                    ? "bg-gradient-to-r from-sky-500 to-blue-600 text-white shadow-md shadow-sky-500/20"
-                    : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200"
+                    ? "bg-gradient-to-r from-sky-500 to-blue-600 text-white shadow-lg shadow-sky-500/25"
+                    : "text-slate-400 hover:bg-white/[0.05] hover:text-slate-200"
                 }`}
               >
                 {link.label}
