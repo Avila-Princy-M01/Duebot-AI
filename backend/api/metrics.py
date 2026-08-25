@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select
@@ -17,7 +18,7 @@ from backend.data.baselines import (
     simulate_no_agent,
     snapshots_from_generator,
 )
-from backend.data.generator import DueBotDataGenerator
+from backend.data.generator import SIM_TODAY, DueBotDataGenerator
 from backend.dependencies import get_db
 from backend.engine.recovery_metrics import recovery_report
 from backend.engine.states import InvoiceState
@@ -75,29 +76,31 @@ async def recovery_metrics(
 @router.get("/baseline")
 async def baseline_metrics(
     cadence_days: int = Query(default=NAIVE_CADENCE_DAYS, ge=1, le=30),
+    refresh: bool = Query(default=False),
     session: AsyncSession = Depends(get_db),
 ) -> SuccessEnvelope[list[BaselineRowOut]]:
-    """Latest persisted three-way comparison, or compute in-memory from generator test split."""
-    result = await session.execute(
-        select(BaselineComparison).order_by(BaselineComparison.created_at.desc()).limit(3)
-    )
-    rows = list(result.scalars())
-    if rows:
-        return SuccessEnvelope(data=[BaselineRowOut.model_validate(r) for r in rows])
+    """Latest persisted three-way comparison run, or compute fresh from generator test split."""
+    if not refresh:
+        latest_run_subquery = (
+            select(BaselineComparison.run_id)
+            .order_by(BaselineComparison.created_at.desc(), BaselineComparison.id.desc())
+            .limit(1)
+            .scalar_subquery()
+        )
+        result = await session.execute(
+            select(BaselineComparison)
+            .where(BaselineComparison.run_id == latest_run_subquery)
+            .order_by(BaselineComparison.id.asc())
+        )
+        rows = list(result.scalars())
+        if len(rows) == 3:
+            return SuccessEnvelope(data=[BaselineRowOut.model_validate(r) for r in rows])
 
     gen = DueBotDataGenerator(seed=42)
-    gen.run(num_invoices=120)
+    gen.run(num_invoices=260)
     test = [inv for inv in gen.invoices if inv.split == "test"]
     snaps = snapshots_from_generator(test, gen.messages)
-    as_of = date(2026, 8, 21)
-    _ = (
-        report_for(simulate_no_agent(snaps, as_of), as_of=as_of),
-        report_for(simulate_naive_cadence(snaps, as_of, cadence_days=cadence_days), as_of=as_of),
-        report_for(simulate_duebot(snaps, as_of), as_of=as_of),
-    )
-    from uuid import uuid4
-
-    from backend.models.baseline import BaselineComparison as BC
+    as_of = SIM_TODAY
 
     run_id = uuid4()
     persisted: list[BaselineComparison] = []
@@ -107,7 +110,7 @@ async def baseline_metrics(
         ("duebot", simulate_duebot(snaps, as_of)),
     ):
         report = report_for(sim, as_of=as_of)
-        row = BC(
+        row = BaselineComparison(
             run_id=run_id,
             strategy=strategy,
             eval_set_size=report.eval_set_size,
@@ -122,5 +125,5 @@ async def baseline_metrics(
         )
         session.add(row)
         persisted.append(row)
-    await session.flush()
+    await session.commit()
     return SuccessEnvelope(data=[BaselineRowOut.model_validate(r) for r in persisted])

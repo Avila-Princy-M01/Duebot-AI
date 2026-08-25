@@ -13,6 +13,7 @@ from backend.data.baselines import (
 )
 from backend.data.generator import DueBotDataGenerator
 from backend.engine.policy import can_contact
+from httpx import AsyncClient
 
 
 def test_three_way_eval_on_generator_test_split() -> None:
@@ -95,3 +96,31 @@ def test_dispute_policy_gate_blocks_contacts_mid_timeline_and_pre_existing() -> 
             "disputed" in decision.reason.lower()
             or "human review" in decision.reason.lower()
         )
+
+
+async def test_baseline_metrics_api_endpoint_refresh_and_grouping(client: AsyncClient) -> None:
+    """Verify that GET /metrics/baseline returns grouped run_id rows and supports refresh."""
+    # First request: computes and persists run A
+    resp1 = await client.get("/api/metrics/baseline")
+    assert resp1.status_code == 200
+    data1 = resp1.json()["data"]
+    assert len(data1) == 3
+    run_id_1 = data1[0]["run_id"]
+    assert all(row["run_id"] == run_id_1 for row in data1)
+
+    # Second request without refresh: returns identical cached run A
+    resp2 = await client.get("/api/metrics/baseline")
+    assert resp2.status_code == 200
+    data2 = resp2.json()["data"]
+    assert len(data2) == 3
+    assert all(row["run_id"] == run_id_1 for row in data2)
+
+    # Third request with refresh=true: recomputes and yields fresh run B with new run_id
+    resp3 = await client.get("/api/metrics/baseline?refresh=true")
+    assert resp3.status_code == 200
+    data3 = resp3.json()["data"]
+    assert len(data3) == 3
+    run_id_2 = data3[0]["run_id"]
+    assert run_id_2 != run_id_1
+    assert all(row["run_id"] == run_id_2 for row in data3)
+
