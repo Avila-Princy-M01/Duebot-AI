@@ -1,5 +1,5 @@
 {
-  "run_id": "2208b64d-9fa7-4f3c-acad-3e16087d5f9d",
+  "run_id": "d9a27a1e-1169-45a7-950a-e9482c4c9ae6",
   "as_of": "2026-08-21",
   "n_test": 71,
   "strategies": {
@@ -12,7 +12,7 @@
       "recovery_30d": 0.7046042420530719,
       "recovery_60d": 0.7252292606449345,
       "recovery_90d": 0.7354011681093209,
-      "avg_days_to_recovery": 8.462962962962964,
+      "avg_days_to_recovery": 8.277777777777779,
       "promise_kept_rate": 0.2857142857142857,
       "false_escalation_rate": 0.0,
       "total_contacts_sent": 0,

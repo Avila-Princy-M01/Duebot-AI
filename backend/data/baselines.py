@@ -114,6 +114,39 @@ def snapshots_from_generator(
     return rows
 
 
+def shared_should_settle(invoice: SnapshotInvoice, clock_date: date) -> bool:
+    """Neutral, shared buyer settlement model used identically across all 3 strategies.
+
+    Settlement conditions are driven strictly by ground-truth buyer properties:
+    1. Organic self-cure: Buyer pays 3 days post-due without intervention.
+    2. Kept promise: Buyer pays when the promised date is reached after receiving a touch.
+    3. Nudge conversion: Non-disputed, non-broken-promise buyer pays after receiving >= 2 touches.
+
+    Zero strategy-specific speed bonuses or artificial paid_date overrides.
+    """
+    if invoice.status == "disputed":
+        return False
+
+    outbound_count = invoice.contacts
+
+    # 1. Self-cure
+    if invoice.would_have_paid_without_intervention is True:
+        return clock_date >= invoice.due_date + timedelta(days=3)
+
+    # 2. Kept promise
+    if outbound_count > 0 and invoice.promise_outcome == "kept":
+        if invoice.promised_date is not None:
+            return clock_date >= invoice.promised_date
+        return clock_date >= invoice.due_date + timedelta(days=7)
+
+    # 3. Nudge conversion (requires at least 2 touches)
+    return bool(
+        outbound_count >= 2
+        and invoice.promise_outcome != "broken"
+        and (clock_date - invoice.due_date).days < 45
+    )
+
+
 def simulate_no_agent(invoices: list[SnapshotInvoice], as_of: date) -> list[SnapshotInvoice]:
     """No-agent baseline: 0 contacts sent, recovers only if organic self-cure."""
     out: list[SnapshotInvoice] = []
@@ -138,10 +171,18 @@ def simulate_no_agent(invoices: list[SnapshotInvoice], as_of: date) -> list[Snap
         if clone.state is InvoiceState.RECOVERED:
             out.append(clone)
             continue
-        if clone.would_have_paid_without_intervention is True and clone.status != "disputed":
-            clone.state = InvoiceState.RECOVERED
-            clone.paid_date = min(clone.due_date + timedelta(days=5), as_of)
-            clone.amount_paid = clone.total_amount
+
+        start_date = min(clone.due_date, as_of)
+        days_span = max((as_of - start_date).days, 1)
+
+        for day_offset in range(days_span + 1):
+            clock_date = start_date + timedelta(days=day_offset)
+            if shared_should_settle(clone, clock_date):
+                clone.state = InvoiceState.RECOVERED
+                clone.paid_date = clock_date
+                clone.amount_paid = clone.total_amount
+                break
+
         out.append(clone)
     return out
 
@@ -194,25 +235,8 @@ def simulate_naive_cadence(
                 clone.state = InvoiceState.ESCALATED
                 break
 
-            # Buyer response model check
-            outbound_count = clone.contacts
-            should_pay_now = False
-            if (
-                clone.would_have_paid_without_intervention is True
-                and clock_date >= clone.due_date + timedelta(days=3)
-            ) or (
-                outbound_count > 0
-                and clone.promise_outcome == "kept"
-                and clock_date >= clone.due_date + timedelta(days=cadence_days)
-            ) or (
-                outbound_count >= 2
-                and clone.promise_outcome != "broken"
-                and clone.status != "disputed"
-                and (clock_date - clone.due_date).days < 45
-            ):
-                should_pay_now = True
-
-            if should_pay_now and clone.status != "disputed":
+            # Buyer response model check (shared, neutral across all arms)
+            if shared_should_settle(clone, clock_date) and clone.status != "disputed":
                 clone.state = InvoiceState.RECOVERED
                 clone.paid_date = clock_date
                 clone.amount_paid = clone.total_amount
@@ -308,32 +332,14 @@ def simulate_duebot(invoices: list[SnapshotInvoice], as_of: date) -> list[Snapsh
                     )
                     clone.state = tr_brk.new_state
 
-            # 3. Ground-truth buyer payment resolution
-            outbound_count = clone.contacts
-            should_pay_now = False
-            if (
-                clone.would_have_paid_without_intervention is True
-                and clock_date >= clone.due_date + timedelta(days=3)
-            ) or (
-                outbound_count > 0
-                and clone.promise_outcome == "kept"
-                and clone.promised_date is not None
-                and clock_date >= clone.promised_date
-            ) or (
-                outbound_count >= 2
-                and clone.promise_outcome != "broken"
-                and clone.status != "disputed"
-                and (clock_date - clone.due_date).days < 45
-            ):
-                should_pay_now = True
-
-            if should_pay_now and is_valid_transition(
+            # 3. Ground-truth buyer payment resolution (shared, neutral across all arms)
+            if shared_should_settle(clone, clock_date) and is_valid_transition(
                 clone.state, TransitionEvent.PAYMENT_CONFIRMED
             ):
                 tr = transition(
                     clone,
                     TransitionEvent.PAYMENT_CONFIRMED,
-                    reasoning="Payment confirmed via Razorpay link",
+                    reasoning="Payment confirmed via webhook",
                     occurred_at=clock_dt,
                 )
                 clone.state = tr.new_state
