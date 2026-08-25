@@ -114,13 +114,19 @@ def snapshots_from_generator(
     return rows
 
 
-def shared_should_settle(invoice: SnapshotInvoice, clock_date: date) -> bool:
+def shared_should_settle(
+    invoice: SnapshotInvoice,
+    clock_date: date,
+    *,
+    touch_threshold: int = 2,
+) -> bool:
     """Neutral, shared buyer settlement model used identically across all 3 strategies.
 
     Settlement conditions are driven strictly by ground-truth buyer properties:
     1. Organic self-cure: Buyer pays 3 days post-due without intervention.
     2. Kept promise: Buyer pays when the promised date is reached after receiving outreach.
-    3. Nudge conversion: Non-disputed, non-broken-promise buyer pays after receiving >= 2 touches.
+    3. Nudge conversion: Non-disputed, non-broken-promise buyer pays after receiving
+       >= touch_threshold touches.
 
     Zero strategy-specific speed bonuses or artificial paid_date overrides.
     """
@@ -139,15 +145,20 @@ def shared_should_settle(invoice: SnapshotInvoice, clock_date: date) -> bool:
             return clock_date >= invoice.promised_date
         return clock_date >= invoice.due_date + timedelta(days=7)
 
-    # 3. Nudge Conversion (converts once buyer receives >= 2 touches before 45 days)
+    # 3. Nudge Conversion (converts once buyer receives >= touch_threshold touches before 45 days)
     return bool(
-        outbound_count >= 2
+        outbound_count >= touch_threshold
         and invoice.promise_outcome != "broken"
         and (clock_date - invoice.due_date).days < 45
     )
 
 
-def simulate_no_agent(invoices: list[SnapshotInvoice], as_of: date) -> list[SnapshotInvoice]:
+def simulate_no_agent(
+    invoices: list[SnapshotInvoice],
+    as_of: date,
+    *,
+    touch_threshold: int = 2,
+) -> list[SnapshotInvoice]:
     """No-agent baseline: 0 contacts sent, recovers only if organic self-cure."""
     out: list[SnapshotInvoice] = []
     for inv in invoices:
@@ -177,7 +188,7 @@ def simulate_no_agent(invoices: list[SnapshotInvoice], as_of: date) -> list[Snap
 
         for day_offset in range(days_span + 1):
             clock_date = start_date + timedelta(days=day_offset)
-            if shared_should_settle(clone, clock_date):
+            if shared_should_settle(clone, clock_date, touch_threshold=touch_threshold):
                 clone.state = InvoiceState.RECOVERED
                 clone.paid_date = clock_date
                 clone.amount_paid = clone.total_amount
@@ -193,6 +204,7 @@ def simulate_naive_cadence(
     *,
     cadence_days: int = NAIVE_CADENCE_DAYS,
     max_contacts: int = MAX_NAIVE_CONTACTS,
+    touch_threshold: int = 2,
 ) -> list[SnapshotInvoice]:
     """Naive baseline: fixed interval send, NO can_contact policy gate, NO dispute check."""
     out: list[SnapshotInvoice] = []
@@ -232,7 +244,7 @@ def simulate_naive_cadence(
                 clone.history.append(SnapshotTouch(direction="outbound", sent_at=clock_dt))
 
             # Buyer response model check (shared, neutral across all arms)
-            if shared_should_settle(clone, clock_date):
+            if shared_should_settle(clone, clock_date, touch_threshold=touch_threshold):
                 clone.state = InvoiceState.RECOVERED
                 clone.paid_date = clock_date
                 clone.amount_paid = clone.total_amount
@@ -242,7 +254,12 @@ def simulate_naive_cadence(
     return out
 
 
-def simulate_duebot(invoices: list[SnapshotInvoice], as_of: date) -> list[SnapshotInvoice]:
+def simulate_duebot(
+    invoices: list[SnapshotInvoice],
+    as_of: date,
+    *,
+    touch_threshold: int = 2,
+) -> list[SnapshotInvoice]:
     """Execute DueBot's real deterministic engine, policy gates, and state machine day-by-day."""
     out: list[SnapshotInvoice] = []
 
@@ -314,9 +331,9 @@ def simulate_duebot(invoices: list[SnapshotInvoice], as_of: date) -> list[Snapsh
                     clone.state = tr_brk.new_state
 
             # 3. Ground-truth buyer payment resolution (shared, neutral across all arms)
-            if shared_should_settle(clone, clock_date) and is_valid_transition(
-                clone.state, TransitionEvent.PAYMENT_CONFIRMED
-            ):
+            if shared_should_settle(
+                clone, clock_date, touch_threshold=touch_threshold
+            ) and is_valid_transition(clone.state, TransitionEvent.PAYMENT_CONFIRMED):
                 tr = transition(
                     clone,
                     TransitionEvent.PAYMENT_CONFIRMED,
