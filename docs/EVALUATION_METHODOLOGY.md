@@ -73,28 +73,14 @@ Because all 3 strategies run on the **exact same invoice portfolios within each 
 
 ---
 
-## 5. Robustness & Sensitivity Analysis across Fatigue Models
-
-| Fatigue Model | No-Agent Recovery | Naive Recovery | DueBot Recovery | Naive Contacts | DueBot Contacts | Contact Reduction | DueBot Recovery / Touch |
-|:---|:---|:---|:---|:---|:---|:---|:---|
-| **Zero Fatigue ($k=\infty$)** | 73.5% | 79.8% | 79.8% | 48 | 15 | **68.8%** | ₹ 4,77,495 |
-| **$k=6$ touches** | 73.5% | 79.8% | 79.8% | 48 | 15 | **68.8%** | ₹ 4,77,495 |
-| **$k=5$ touches** | 73.5% | 79.8% | 79.8% | 48 | 15 | **68.8%** | ₹ 4,77,495 |
-| **$k=4$ touches** | 73.5% | 79.8% | 79.8% | 48 | 15 | **68.8%** | ₹ 4,77,495 |
-| **$k=3$ touches** | 73.5% | 79.8% | 79.8% | 48 | 15 | **68.8%** | ₹ 4,77,495 |
-
-**Core Takeaway**: DueBot's contact reduction and capital efficiency edge are **pure policy invariants** produced by `can_contact()` weekly caps, sequence caps, and dispute routing — entirely independent of buyer response model tuning.
-
----
-
 ## 5. How to Reproduce
 
 ```bash
-# Run the primary 3-way evaluation benchmark
-python scripts/run_eval.py
+# Run the 10-seed paired treatment benchmark (~710 test invoices)
+python scripts/run_multi_seed_eval.py
 
-# Run the parameter sensitivity stress-test
-python scripts/eval_sensitivity.py
+# Run the single-seed detailed benchmark (seed=42, n=71)
+python scripts/run_eval.py
 
 # Run unit and baseline invariant tests
 pytest tests/eval/test_baselines.py -v
