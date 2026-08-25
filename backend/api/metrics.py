@@ -80,7 +80,7 @@ async def baseline_metrics(
     session: AsyncSession = Depends(get_db),
 ) -> SuccessEnvelope[list[BaselineRowOut]]:
     """Latest persisted three-way comparison run, or compute fresh from generator test split."""
-    if not refresh:
+    if not refresh and cadence_days == NAIVE_CADENCE_DAYS:
         latest_run_subquery = (
             select(BaselineComparison.run_id)
             .order_by(BaselineComparison.created_at.desc(), BaselineComparison.id.desc())

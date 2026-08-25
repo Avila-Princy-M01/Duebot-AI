@@ -124,3 +124,12 @@ async def test_baseline_metrics_api_endpoint_refresh_and_grouping(client: AsyncC
     assert run_id_2 != run_id_1
     assert all(row["run_id"] == run_id_2 for row in data3)
 
+    # Fourth request with custom cadence_days: recomputes and yields fresh run C
+    resp4 = await client.get("/api/metrics/baseline?cadence_days=3")
+    assert resp4.status_code == 200
+    data4 = resp4.json()["data"]
+    assert len(data4) == 3
+    run_id_3 = data4[0]["run_id"]
+    assert run_id_3 != run_id_2
+    assert all(row["run_id"] == run_id_3 for row in data4)
+
