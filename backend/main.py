@@ -56,6 +56,7 @@ def create_app() -> FastAPI:
     from backend.api.nudge import router as nudge_router
     from backend.api.promises import router as promises_router
     from backend.api.seed import router as seed_router
+    from backend.api.webhooks import router as webhooks_router
 
     app.include_router(health_router, prefix="/api")
     app.include_router(assistant_router, prefix="/api")
@@ -68,6 +69,7 @@ def create_app() -> FastAPI:
     app.include_router(metrics_router, prefix="/api")
     app.include_router(nudge_router, prefix="/api")
     app.include_router(seed_router, prefix="/api")
+    app.include_router(webhooks_router, prefix="/api")
 
     @app.exception_handler(NotFoundError)
     async def not_found_handler(_request: Request, exc: NotFoundError) -> JSONResponse:

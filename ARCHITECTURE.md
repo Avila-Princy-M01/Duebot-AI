@@ -44,7 +44,7 @@ flowchart TB
     end
 
     subgraph API["FastAPI Backend"]
-        Routes[API routes<br/>merchants · invoices · buyers · nudge · promises · audit]
+        Routes[API routes<br/>merchants · invoices · buyers · nudge · promises · audit · webhooks]
     end
 
     subgraph Engine["Deterministic Engine — no I/O, no API calls"]
@@ -56,31 +56,32 @@ flowchart TB
         Metrics[recovery_metrics.py]
     end
 
-    subgraph LLM["LLM Layer — Claude Sonnet, function-calling only"]
+    subgraph LLM["LLM Layer — Claude / Gemini, function-calling only"]
         Parser[reply_parser.py<br/>free text → structured intent]
         Drafter[message_drafter.py<br/>tone within fixed template]
     end
 
-    subgraph Tasks["Background Tasks — simple poll loop, no queue"]
+    subgraph Tasks["Lifecycle Operations & Handlers"]
         AgingCheck[aging_checker]
         NudgeExec[nudge_executor]
         PromiseCheck[promise_checker]
-        ReplyProc[reply_processor]
+        PaymentWebhook[confirm_payment]
     end
 
     subgraph Integrations["External Integrations"]
-        Razorpay[Razorpay SDK<br/>Payment Links · Invoices · Orders]
+        Razorpay[Razorpay SDK<br/>Payment Links · Invoices]
         WhatsApp[WhatsApp Business API<br/>or simulated inbox]
         Email[Email fallback]
     end
 
-    subgraph Data["PostgreSQL"]
+    subgraph Data["PostgreSQL / SQLite"]
         DB[(merchants · buyers · invoices<br/>interactions · promises<br/>audit_log — append only)]
     end
 
     Client -->|HTTPS/JSON| Routes
     Routes --> Engine
     Routes --> Data
+    Routes --> PaymentWebhook
     Tasks --> Engine
     Tasks --> LLM
     Tasks --> Integrations
@@ -88,8 +89,8 @@ flowchart TB
     Engine -->|reads/writes state, never calls LLM or network| Data
     LLM -->|structured output only, feeds into Engine as input| Engine
     Integrations --> Data
-    Razorpay -.->|payment link status webhook| ReplyProc
-    WhatsApp -.->|inbound reply| ReplyProc
+    Razorpay -.->|payment link status webhook| Routes
+    WhatsApp -.->|inbound reply| Routes
 ```
 
 **The one arrow that matters most in this diagram:** LLM → Engine is one-directional and passes *data*, not *decisions*. The parser hands the state machine a structured intent (`promise`, `dispute`, `ambiguous`, ...) with a confidence score. The state machine — plain Python, no API call — decides what happens next. If a reviewer asks you to point to the line where "the agent decides to act," it should be a deterministic `if` statement in `engine/policy.py`, never a Claude API response.
@@ -389,13 +390,13 @@ sequenceDiagram
 Two different kinds of correctness are being proven here, and they're kept separate:
 
 - **Unit/integration tests** prove the code does what it's supposed to (`engine/` 95%+, `llm/` 80%+ with the API mocked, `api/` 85%+). These run in CI on every commit.
-- **The eval harness** (`tests/eval/run_eval.py`) proves the *product* works — it is not a unit test, it's a benchmark, and it runs against the real synthetic generator, never fixture stubs (this is an explicit red line — see the "no placeholder data in the eval harness" rule).
+- **The eval harness** (`scripts/run_eval.py`) benchmarks the product across a held-out generator dataset (`split=test`, $n=71$), driving the real deterministic engine (`can_contact`, `transition`, `next_action_at`, `fallback_intent`) day-by-day.
 
-**The eval harness runs three conditions over the same held-out 60-invoice batch** and reports 30/60/90-day recovery rate, promise-kept rate, false-escalation rate, and average days-to-recovery for each:
+**The eval harness runs three conditions over the exact same held-out test split ($n=71$)** and reports 30/60/90-day recovery rate, promise-kept rate, false-escalation rate, total contacts, and capital efficiency for each:
 
-1. **No intervention** — what recovers with zero follow-up (the floor).
-2. **Naive fixed-cadence reminder** — a deterministic "nudge every 7 days" baseline, cheap to implement, essential for credibility.
-3. **DueBot** — the actual system.
+1. **No intervention (`no_agent`)** — what recovers with zero follow-up (the self-cure floor).
+2. **Naive fixed-cadence reminder (`naive_cadence`)** — a deterministic "nudge every 7 days" baseline without policy or dispute checks.
+3. **DueBot** — the actual policy-governed engine with weekly contact caps, promise grace periods, and dispute abstention.
 
 The three-way comparison, not DueBot's numbers in isolation, is the artifact that answers "how do you know this actually helps" — a number without a baseline is a claim; a number next to two baselines is evidence.
 
