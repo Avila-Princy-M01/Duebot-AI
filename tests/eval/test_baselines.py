@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import UTC, date, datetime, time
 
 from backend.data.baselines import (
     report_for,
@@ -12,6 +12,7 @@ from backend.data.baselines import (
     snapshots_from_generator,
 )
 from backend.data.generator import DueBotDataGenerator
+from backend.engine.policy import can_contact
 
 
 def test_three_way_eval_on_generator_test_split() -> None:
@@ -66,3 +67,31 @@ def test_multi_seed_evaluation_stability() -> None:
         # Invariant: DueBot capital efficiency (recovery per contact) strictly exceeds naive
         assert rep_due.recovery_per_contact > rep_naive.recovery_per_contact
 
+
+def test_dispute_policy_gate_blocks_contacts_mid_timeline_and_pre_existing() -> None:
+    """Verify that can_contact() policy gate actively blocks touches on disputed invoices."""
+    as_of = date(2026, 8, 21)
+    gen = DueBotDataGenerator(seed=42)
+    gen.run(num_invoices=150)
+    test_invoices = [inv for inv in gen.invoices if inv.split == "test"]
+    snaps = snapshots_from_generator(test_invoices, gen.messages)
+
+    sim_due = simulate_duebot(snaps, as_of)
+    disputed = [
+        inv
+        for inv in sim_due
+        if inv.status == "disputed" or inv.state.value in ("disputed", "human_review")
+    ]
+    assert len(disputed) > 0
+
+    # 1. Zero touches on disputed invoices across entire day-stepping run
+    for inv in disputed:
+        assert inv.contacts == 0
+        # 2. Verify that can_contact() explicitly returns allowed=False on this invoice
+        clock_dt = datetime.combine(as_of, time(10, 0), tzinfo=UTC)
+        decision = can_contact(inv, inv.history, as_of=clock_dt)
+        assert not decision.allowed
+        assert (
+            "disputed" in decision.reason.lower()
+            or "human review" in decision.reason.lower()
+        )

@@ -269,7 +269,7 @@ def simulate_duebot(invoices: list[SnapshotInvoice], as_of: date) -> list[Snapsh
             out.append(clone)
             continue
 
-        # If disputed prior to start, route to human review
+        # If disputed prior to start, route to human review via state machine
         if clone.status == "disputed":
             if is_valid_transition(clone.state, TransitionEvent.ROUTED_TO_HUMAN):
                 tr = transition(
@@ -281,8 +281,6 @@ def simulate_duebot(invoices: list[SnapshotInvoice], as_of: date) -> list[Snapsh
                 clone.state = tr.new_state
             else:
                 clone.state = InvoiceState.HUMAN_REVIEW
-            out.append(clone)
-            continue
 
         start_date = min(clone.due_date, as_of)
         days_span = max((as_of - start_date).days, 1)
