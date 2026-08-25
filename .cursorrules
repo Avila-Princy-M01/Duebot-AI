@@ -1,107 +1,70 @@
-# DueBot — Cursor Rules
+# DueBot — Development & Architecture Rules
 
-You are working in the DueBot repository: an AI collections agent for overdue B2B
-receivables, built for the Razorpay AI Buildathon 2026 (Track 03 — AI Revenue Recovery).
+This repository implements DueBot: an autonomous collections agent for overdue B2B
+receivables (Track 03 — AI Revenue Recovery).
 
-This is a hiring evaluation, not a demo competition. The reviewers are Razorpay
-engineers who will read every line of code. Write code that looks shipped to
-production, not thrown together for a hackathon. Full design rationale lives in
-`ARCHITECTURE.md` — read it before making any structural change, and update it
-in the same change whenever you affect system design.
+Full design specifications and transition matrices live in `ARCHITECTURE.md`.
+Maintain system invariants on every change.
 
 ---
 
-## 0. What DueBot does (keep this in mind for every suggestion)
+## 0. System Purpose & Core Domain
 
-- Chases overdue B2B invoices via WhatsApp/email nudges on behalf of SME merchants.
-- Tracks buyer promise-to-pay commitments and escalates when a promise breaks.
-- Never moves money. It only requests payment via Razorpay Payment Links.
-- Every action is bounded, logged, and reversible. The audit log is a first-class
-  deliverable, not an afterthought.
+- Evaluates and executes timely, policy-compliant outreach for overdue B2B receivables.
+- Extracts and tracks buyer promise-to-pay commitments and escalates broken commitments.
+- Non-custodial: never moves money directly; requests payment solely via Razorpay Payment Links.
+- Every state transition is bounded, logged, explainable, and recorded in an append-only audit trail.
 
 ---
 
-## 1. Non-negotiable architecture rules
+## 1. Non-Negotiable Architecture Invariants
 
-**Deterministic core, LLM periphery — do not blur this line.**
+**Deterministic Core, LLM Periphery — strict isolation:**
 - `backend/engine/` (aging, risk-tier, policy, scheduler, state machine, metrics)
-  is plain Python, pure logic, **zero API calls**. If you're about to add a
-  network call or an LLM call inside `engine/`, stop — it belongs in `llm/` or
-  `integrations/` instead, and the engine should receive its output as a plain
-  argument.
-- The LLM (`backend/llm/`) only does two things: parse free-text buyer replies
-  into structured intent, and personalize message tone within a fixed template.
-  **The LLM never decides whether to act — only how to phrase something or what
-  a reply meant.** Any code where an LLM output directly triggers a state
-  transition, without passing through `engine/policy.py` or `engine/states.py`
-  first, is wrong. Flag it.
+  is pure Python logic with **zero network/API calls**. Network calls and LLM invocations
+  belong strictly in `llm/`, `integrations/`, or `api/`.
+- The LLM (`backend/llm/`) is restricted to structured intent parsing (via schema/tool-calling)
+  and message phrasing within fixed templates.
+- **The LLM never makes operational decisions.** All state transitions and outreach actions
+  must pass through deterministic validation in `engine/policy.py` and `engine/states.py`.
 
-**State machine over framework.**
-- The invoice lifecycle is a fixed set of states and transitions defined in
-  `engine/states.py`:
+**Explicit State Machine:**
+- The invoice lifecycle is defined strictly by the finite state machine in `engine/states.py`:
   `CREATED → OVERDUE → NUDGED → REPLIED → PROMISED → REMINDED → RECOVERED`,
-  with branches to `DISPUTED → HUMAN_REVIEW`, `ESCALATED → HUMAN_REVIEW`, and
-  `OPTED_OUT → TERMINATED`.
-- Every transition writes exactly one `audit_log` row **before** it's considered
-  committed. If you write a transition without a corresponding audit write in
-  the same operation, that's a bug, not a style nit.
-- Do not introduce LangChain, CrewAI, AutoGen, or any agent-loop framework.
-  A hand-rolled state machine is the deliberate choice here — see
-  `ARCHITECTURE.md` §11 for why.
+  with deterministic terminal/human-review branches for `DISPUTED`, `ESCALATED`, and `OPTED_OUT`.
+- Every transition appends an immutable `audit_log` row within the same transactional unit.
+- Hand-rolled state machine ensures full predictability without unconstrained agent-loop frameworks.
 
-**Confidence threshold — never guess.**
-- Reply parsing uses Claude's tool-use/function-calling for structured output
-  only. Never parse free-text LLM output with regex.
-- `CONFIDENCE_THRESHOLD = 0.7`. Below it, route to `HUMAN_REVIEW` with the
-  model's stated reasoning attached — never auto-log a promise the system isn't
-  confident about. This one rule is the entire point of the project; do not
-  weaken it for convenience in a demo or a test.
+**Strict Confidence & Abstention:**
+- Intent extraction enforces `CONFIDENCE_THRESHOLD = 0.7`.
+- Ambiguous or low-confidence replies (`confidence < 0.7`) must immediately route to `HUMAN_REVIEW`
+  with structured reasoning, never guessing or forcing unverified dates.
 
-**Hard safety invariants (enforced in `engine/policy.py`, never bypassed):**
-- Max 3 contacts per invoice per week (`MAX_CONTACTS_PER_WEEK`, named constant).
-- No contact after explicit buyer opt-out — irreversible.
-- No discount, waiver, or write-off without human approval.
-- No auto-debit, ever — payment links only, buyer-initiated.
-- Disputed invoices → immediate human escalation, never nudged again.
-- Every outbound message is logged **before** send; if the log write fails, the
-  send must not happen.
-
-**No over-engineering.** Do not suggest or add:
-- A message queue (Celery/RabbitMQ/SQS) — a poll/cron loop is sufficient and
-  more honest at this scale.
-- A vector database — this is structured state tracking, not retrieval.
-- Microservices, Kubernetes, or Docker orchestration beyond a simple deploy.
-- Redis — Postgres is the only store needed.
-- GraphQL — REST is simpler and sufficient.
-If you think one of these is genuinely needed, say so explicitly and explain
-what would break without it — don't add it silently.
+**Policy & Safety Guards (`engine/policy.py`):**
+- Contact frequency capped at `MAX_CONTACTS_PER_WEEK = 3`.
+- Explicit buyer opt-outs are honored immediately and irreversibly.
+- Zero automatic discounts or write-offs without manual authorization.
+- Zero direct debits — buyer-initiated payment links only.
+- Disputed invoices immediately halt automation and route to human review.
+- Every outbound touch is verified by `can_contact()` and logged before dispatch.
 
 ---
 
-## 2. Tech stack (do not introduce alternatives without asking)
+## 2. Tech Stack & Dependencies
 
-| Layer | Choice |
+| Layer | Technology |
 |---|---|
-| Frontend | Next.js 14+ (App Router) + Tailwind CSS |
-| Backend | Python 3.11+, FastAPI |
-| Database | PostgreSQL, SQLAlchemy 2.0+ (async), Alembic migrations |
-| LLM | Claude Sonnet via the `anthropic` Python SDK, function-calling only |
-| Payments | Razorpay SDK (test mode) — Payment Links, Invoices, Orders |
-| Validation | Pydantic v2 |
+| Frontend | Next.js 14 (App Router) + TypeScript + Tailwind CSS |
+| Backend | Python 3.11+, FastAPI, Pydantic v2 |
+| Database | PostgreSQL / SQLite, SQLAlchemy 2.0+ (async), Alembic migrations |
+| LLM | Claude (Anthropic SDK) & Gemini via structured tool/function calling |
+| Payments | Razorpay SDK (test mode) — Payment Links, HMAC-SHA256 Webhooks |
 | Testing | pytest + pytest-asyncio + httpx |
-| Linting | Ruff (format + check, replaces flake8/isort/black) |
-| Type checking | mypy, strict mode |
-| Env management | `pyproject.toml` + `uv` or `pip-tools` — no bare `requirements.txt` |
-
-Do not add a dependency that isn't in `pyproject.toml` without flagging it and
-explaining why it's needed.
+| Quality | Ruff (linter + formatter), mypy (strict mode) |
 
 ---
 
-## 3. Project structure
-
-Follow this layout exactly. When creating a new file, place it here — don't
-invent new top-level directories.
+## 3. Project Directory Structure
 
 ```
 duebot/
@@ -109,175 +72,59 @@ duebot/
 ├── README.md
 ├── backend/
 │   ├── main.py, config.py, dependencies.py
-│   ├── models/          # SQLAlchemy ORM
-│   ├── schemas/         # Pydantic request/response
-│   ├── api/              # FastAPI routes
-│   ├── engine/           # deterministic core — NO API calls, NO LLM
-│   ├── llm/              # the ONLY place Claude is called
-│   │   └── prompts/      # version-controlled prompt templates, not inline strings
-│   ├── integrations/     # razorpay.py, whatsapp.py, email_sender.py
-│   ├── tasks/             # polling background jobs, no Celery
-│   └── data/              # generator.py, seed.py, baselines.py
-├── frontend/               # Next.js app (app/, components/, lib/)
+│   ├── models/          # SQLAlchemy async ORM models
+│   ├── schemas/         # Pydantic request/response validation
+│   ├── api/             # FastAPI REST endpoints & webhooks
+│   ├── engine/          # Deterministic core (pure logic, no I/O)
+│   ├── llm/             # LLM structured parsers & drafters
+│   ├── integrations/    # External SDK clients (Razorpay, WhatsApp)
+│   ├── tasks/           # Lifecycle operations & task handlers
+│   └── data/            # Generator, baselines, CSV mapping
+├── frontend/            # Next.js dashboard (app/, components/, lib/)
 ├── tests/
 │   ├── unit/, integration/
-│   └── eval/               # the credibility layer — held-out benchmark runs
+│   └── eval/            # Deterministic three-way baseline benchmarks
 ├── scripts/
 └── docs/
 ```
 
 ---
 
-## 4. Code style
+## 4. Code Quality & Standards
 
 **Python**
-- Type hints required on every function signature, class attribute, and
-  variable. Must pass `mypy --strict`.
-- Google-style docstrings on every public function/class/module.
-- Imports: stdlib → third-party → local, Ruff-sorted, no wildcards.
-- `snake_case` functions/variables, `PascalCase` classes/Pydantic
-  models/enums, `UPPER_SNAKE_CASE` constants, `_leading_underscore` private.
-- No bare `except:`. No catching `Exception`/`BaseException` without
-  re-raising. Domain exceptions live in `backend/exceptions.py`.
-- No magic numbers — named constants with units, e.g. `MAX_CONTACTS_PER_WEEK = 3`.
-- No global mutable state — use FastAPI `Depends()`.
-- Async by default for all I/O; sync only for pure computation.
+- Full static typing on all signatures and attributes (`mypy --strict` compliance).
+- Google-style docstrings on all public modules, classes, and methods.
+- Imports formatted and sorted via Ruff.
+- Clear domain exceptions defined in `backend/exceptions.py`.
+- Named constants with units (e.g. `MAX_CONTACTS_PER_WEEK = 3`).
+- Asynchronous I/O across all database and network interactions.
 
-**TypeScript / React**
-- Functional components only, named exports only (no default exports).
-- `interface` for props, not `type`.
-- `strict: true` and `noUncheckedIndexedAccess: true` in tsconfig.
-- Local state only — no Redux/Zustand, this is a dashboard.
-- Tailwind only — no CSS modules, styled-components, or inline styles.
-- All API calls go through `lib/api.ts` — never raw `fetch` inside a component.
-- Wrap each page in an error boundary.
+**TypeScript / Frontend**
+- Strongly typed component interfaces and API schemas.
+- Strict null checks (`noUncheckedIndexedAccess: true`).
+- Centralized API interaction via `lib/api.ts`.
+- Component error boundaries for UI resilience.
 
-**Git**
-- Conventional Commits: `feat(invoices): add aging bucket calculation`.
-- Branches: `feat/...`, `fix/...`, `eval/...`.
-- No force-push to main. No history rewrites. Squash merge feature branches.
-- Every commit should pass `ruff check`, `mypy --strict`, `pytest`, `next build`.
-
-**Documentation**
-- Every module has a module-level docstring explaining its role.
-- Every new API endpoint gets a Pydantic request/response schema.
-- Every new model gets an Alembic migration.
-- Significant design choices get logged as ADRs in `docs/`, not just decided
-  silently in a commit message.
+**Security & Integrity**
+- PII masking on phone numbers, emails, and financial amounts in structured logs.
+- Cryptographic HMAC-SHA256 signature verification on payment webhooks.
+- Strict prompt isolation preventing injection across free-text reply inputs.
+- Append-only audit logs ensuring immutable accounting records.
 
 ---
 
-## 5. Security & data handling — enforce these, don't just suggest them
+## 5. Verification & CI Commands
 
-- **No PII in logs.** Mask phone numbers, email addresses, and invoice amounts
-  before they hit `structlog`/`logging` output. If you're about to log a raw
-  `buyer.phone` or `buyer.email`, mask it first.
-- **SQLAlchemy ORM exclusively. Raw SQL is forbidden**, including in
-  migrations where an ORM equivalent exists. If a query is hard to express in
-  the ORM, that's a signal to flag, not a reason to drop to raw SQL.
-- **No hardcoded secrets, URLs, ports, or API keys** — everything comes from
-  Pydantic `Settings` / environment variables, documented in `.env.example`.
-- **No XSS.** React escapes by default — don't work around that with
-  `dangerouslySetInnerHTML` on buyer-supplied or LLM-generated text (buyer
-  reply text and drafted messages are both untrusted input for this purpose).
-- **Prompt injection defense.** Buyer reply text is untrusted input to the LLM
-  layer. Keep clear role boundaries in prompts; never let reply text influence
-  system-level instructions.
-- **Cost tracking.** Log token usage per LLM call so spend is visible, not
-  discovered later.
-- **Idempotency.** Every state transition is keyed on `(invoice_id,
-  attempt_number)`. Code that sends a message or advances state should be safe
-  to re-run after a crash without duplicating the action — check for this when
-  writing task/executor code.
-- **`audit_log` is append-only** at the database level, not just by
-  convention — no `UPDATE`/`DELETE` should be reachable on that table from
-  application code.
-
----
-
-## 6. Performance targets (flag code that's likely to miss these)
-
-| Metric | Target |
-|---|---|
-| API response time (p95) | < 200ms |
-| Invoice aging scan | < 5s for 10,000 invoices |
-| LLM reply parse | < 3s |
-| Message send + log (end-to-end) | < 2s |
-| Evaluation batch (200 invoices) | < 60s |
-
-If a suggested implementation would clearly blow one of these budgets (e.g. an
-N+1 query in the aging scan, a synchronous LLM call blocking a request path),
-say so and propose the fix rather than shipping it as-is.
-
----
-
-## 7. Testing expectations
-
-- `engine/`: 95%+ coverage — every state transition, every policy rule, every
-  edge case. This is the deterministic core; there's no excuse for gaps here.
-- `llm/`: 80%+, with the Anthropic API mocked — test prompt construction and
-  output parsing, not live model behavior.
-- `api/`: 85%+ — happy path, validation errors, 404s per endpoint.
-- `integrations/`: 70%+, external APIs mocked — test retry/error/timeout paths.
-- Use `pytest.mark.parametrize` for edge cases; shared fixtures (test DB, test
-  client, mock LLM) live in `conftest.py`.
-- No test depends on execution order or external network access, except
-  integration tests explicitly marked `@pytest.mark.integration`.
-- The eval harness (`tests/eval/`) is not a unit test suite — it's the
-  three-way benchmark (no-agent vs. naive-cadence vs. DueBot) that proves the
-  product works. **Never use placeholder/mock data in the eval harness** — it
-  must run against the real synthetic generator output.
-
----
-
-## 8. Red lines — flag these instead of writing them
-
-- LLM output triggering a state transition directly, bypassing `policy.py`/`states.py`.
-- Regex-parsing free-text LLM output instead of using function-calling.
-- Any code path that can send a message without first checking `policy.can_contact()`.
-- Skipping the audit log write for any state transition.
-- Auto-resolving anything below its confidence/policy threshold.
-- Raw SQL, or logging unmasked PII.
-- Hardcoded secrets, URLs, ports, or API keys.
-- `print()` for logging — use `structlog`/`logging`.
-- `TODO`/`FIXME` without a linked issue.
-- `Any` type in Python without a comment explaining why.
-- Introducing LangChain/CrewAI/AutoGen, a message queue, a vector DB, Redis, or
-  GraphQL (see §1).
-- Placeholder/mock data in the eval harness.
-
-When you're unsure whether something crosses a red line, say so and ask —
-don't silently work around it.
-
----
-
-## 9. When suggesting or writing code
-
-1. Check whether the logic belongs in `engine/` (deterministic) or `llm/`/`integrations/`
-   (I/O and language tasks) before placing it — this split is the architecture.
-2. New API endpoint → needs a Pydantic schema in `schemas/`.
-3. New DB model → needs an Alembic migration.
-4. New feature touching system design → update `ARCHITECTURE.md` in the same change.
-5. New function → type hints + docstring + a test, in the same change, not a follow-up.
-6. Before finishing, mentally check the change against §5 (security) and §6
-   (performance) — not just §1 (architecture) — since those are the two
-   categories most likely to get waved through unreviewed.
-7. If a change would make the answer to "why deterministic here, why LLM there"
-   less clean, prefer the alternative that keeps the split clean — that split
-   is what the entire project is judged on.
-
----
-
-## 10. Pre-commit checklist (run before every commit)
+Execute prior to pushing changes:
 
 ```bash
-ruff format .
-ruff check . --fix
-mypy --strict backend/
-pytest tests/unit/ -v
-cd frontend && npm run build
-```
+# Linting and formatting
+ruff check backend tests scripts
 
-If any step fails, fix it before committing. A commit that breaks `mypy --strict`
-or `pytest` is worse than no commit — it's a signal to the reviewer that you
-didn't check your work.
+# Static type analysis
+mypy --strict backend
+
+# Test suite execution
+pytest tests/unit tests/integration tests/eval -v
+```
