@@ -115,11 +115,9 @@ def _horizon_rate(
         return 0.0
     recovered = Decimal("0")
     for inv in invoices:
-        if inv.paid_date is None and inv.state is not InvoiceState.RECOVERED:
+        if not _is_recovered(inv):
             continue
-        paid_on = inv.paid_date
-        if paid_on is None:
-            paid_on = as_of
+        paid_on = inv.paid_date if inv.paid_date is not None else as_of
         if (paid_on - inv.due_date).days <= horizon_days:
             recovered += inv.total_amount
     return float(recovered / total)
