@@ -37,23 +37,24 @@ export function NudgeModal({ invoiceId, onClose, onSuccess }: NudgeModalProps) {
   if (!invoiceId) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm animate-in fade-in duration-200" role="dialog" aria-modal="true" aria-labelledby="nudge-modal-title">
       <div className="w-full max-w-lg rounded-2xl border border-slate-700/80 bg-panel p-6 shadow-2xl shadow-sky-950/50">
         <div className="flex items-center justify-between border-b border-slate-800 pb-4">
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-500/10 text-sky-400 border border-sky-500/20">
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
               </svg>
             </div>
             <div>
-              <h3 className="text-base font-bold text-white">WhatsApp Nudge Preview</h3>
+              <h3 id="nudge-modal-title" className="text-base font-bold text-white">WhatsApp Nudge Preview</h3>
               <p className="text-xs text-slate-400">Invoice #{invoiceId}</p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
+            aria-label="Close modal"
             className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-800 hover:text-white"
           >
             ✕

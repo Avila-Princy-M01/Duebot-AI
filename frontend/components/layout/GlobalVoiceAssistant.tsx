@@ -122,10 +122,13 @@ export function GlobalVoiceAssistant() {
       <button
         type="button"
         onClick={() => setIsOpen(true)}
+        aria-label="Open DueBot Executive Voice Assistant"
+        aria-haspopup="dialog"
+        aria-expanded={isOpen}
         className="fixed bottom-6 right-6 z-40 flex items-center gap-2 rounded-full border border-sky-400/40 bg-gradient-to-r from-sky-500 to-indigo-600 px-4 py-3 text-xs font-extrabold text-white shadow-2xl shadow-sky-500/30 hover:scale-105 transition-all"
         title="Open DueBot Executive Voice Assistant"
       >
-        <span className="flex h-3 w-3 items-center justify-center">
+        <span className="flex h-3 w-3 items-center justify-center" aria-hidden="true">
           <span className="h-2 w-2 rounded-full bg-white animate-ping" />
         </span>
         <span>🎙️ DueBot AI Voice & Status Assistant</span>
@@ -133,16 +136,21 @@ export function GlobalVoiceAssistant() {
 
       {/* Assistant Modal Dialog */}
       {isOpen ? (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-950/80 p-4 backdrop-blur-md animate-in fade-in duration-200">
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-950/80 p-4 backdrop-blur-md animate-in fade-in duration-200"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="assistant-modal-title"
+        >
           <div className="w-full max-w-2xl rounded-3xl border border-sky-500/30 bg-gradient-to-br from-slate-900 via-panel to-slate-950 p-6 shadow-2xl space-y-5">
             {/* Header */}
             <div className="flex items-center justify-between border-b border-slate-800/80 pb-4">
               <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-sky-500/20 border border-sky-500/30 text-sky-400 text-xl shadow-inner">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-sky-500/20 border border-sky-500/30 text-sky-400 text-xl shadow-inner" aria-hidden="true">
                   🎙️
                 </div>
                 <div>
-                  <h3 className="text-base font-extrabold text-white flex items-center gap-2">
+                  <h3 id="assistant-modal-title" className="text-base font-extrabold text-white flex items-center gap-2">
                     DueBot Executive Assistant
                     <span className="rounded bg-sky-500/10 border border-sky-500/30 px-2 py-0.5 text-[10px] font-mono font-bold text-sky-400">
                       Live DB Grounded
@@ -161,6 +169,7 @@ export function GlobalVoiceAssistant() {
                   setIsPlaying(false);
                   setIsOpen(false);
                 }}
+                aria-label="Close assistant modal"
                 className="rounded-full p-2 text-slate-400 hover:bg-slate-800 hover:text-white"
               >
                 ✕
@@ -169,7 +178,7 @@ export function GlobalVoiceAssistant() {
 
             {/* Error banner */}
             {error ? (
-              <div className="rounded-xl border border-rose-500/30 bg-rose-950/30 p-3 text-xs text-rose-300">
+              <div className="rounded-xl border border-rose-500/30 bg-rose-950/30 p-3 text-xs text-rose-300" role="alert">
                 {error}
               </div>
             ) : null}
@@ -188,6 +197,7 @@ export function GlobalVoiceAssistant() {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Ask anything (e.g. 'What is Sen PLC's overdue balance?')..."
+                  aria-label="Ask questions about portfolio, buyers, or invoices"
                   className="w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-xs text-white placeholder-slate-500 focus:border-sky-500 focus:outline-none shadow-inner"
                 />
               </div>
@@ -196,6 +206,7 @@ export function GlobalVoiceAssistant() {
               <button
                 type="button"
                 onClick={handleVoiceListen}
+                aria-label={isListening ? "Stop voice listening" : "Start voice listening"}
                 className={`flex items-center justify-center h-10 w-10 rounded-2xl border transition-all shadow-md ${
                   isListening
                     ? "bg-rose-500 text-white border-rose-400 animate-pulse"
@@ -210,6 +221,7 @@ export function GlobalVoiceAssistant() {
               <button
                 type="submit"
                 disabled={loading || !query.trim()}
+                aria-label="Submit inquiry"
                 className="rounded-2xl bg-gradient-to-r from-sky-500 to-indigo-600 px-5 py-3 text-xs font-bold text-white shadow-lg shadow-sky-500/20 hover:opacity-90 disabled:opacity-50"
               >
                 {loading ? "Searching..." : "Ask"}

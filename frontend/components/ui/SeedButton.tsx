@@ -18,6 +18,8 @@ export function SeedButton({ label = "Seed Synthetic Batch" }: SeedButtonProps) 
       <button
         type="button"
         disabled={busy}
+        aria-label={busy ? "Seeding synthetic batch..." : label}
+        aria-busy={busy}
         className="group relative flex items-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-600 px-5 py-2.5 text-xs font-bold text-white shadow-lg shadow-sky-500/25 transition-all duration-200 hover:shadow-sky-500/40 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
         onClick={() => {
           setBusy(true);

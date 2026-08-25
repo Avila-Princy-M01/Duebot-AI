@@ -68,29 +68,38 @@ export function ReplySimulator({ onReplyInjected }: ReplySimulatorProps) {
 
       <div className="grid gap-3 md:grid-cols-3">
         <div>
-          <label className="block text-[11px] font-semibold uppercase text-slate-400 mb-1">Target Invoice ID</label>
+          <label htmlFor="target-invoice-id-input" className="block text-[11px] font-semibold uppercase text-slate-400 mb-1">
+            Target Invoice ID
+          </label>
           <input
+            id="target-invoice-id-input"
             type="text"
             value={invoiceId}
             onChange={(e) => setInvoiceId(e.target.value)}
+            aria-label="Target Invoice ID"
             className="w-full rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-xs font-mono text-white focus:border-indigo-500 focus:outline-none"
           />
         </div>
 
         <div className="md:col-span-2">
-          <label className="block text-[11px] font-semibold uppercase text-slate-400 mb-1">Incoming Buyer WhatsApp Reply Text</label>
+          <label htmlFor="incoming-reply-text-input" className="block text-[11px] font-semibold uppercase text-slate-400 mb-1">
+            Incoming Buyer WhatsApp Reply Text
+          </label>
           <div className="flex gap-2">
             <input
+              id="incoming-reply-text-input"
               type="text"
               placeholder="e.g. Paisa Friday tak bhej dunga..."
               value={replyText}
               onChange={(e) => setReplyText(e.target.value)}
+              aria-label="Incoming Buyer WhatsApp Reply Text"
               className="flex-1 rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
             />
             <button
               type="button"
               disabled={busy || !invoiceId.trim() || !replyText.trim()}
               onClick={() => void handleInject()}
+              aria-label="Process simulated reply"
               className="rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 px-4 py-2 text-xs font-bold text-white shadow-lg shadow-indigo-500/20 hover:scale-[1.02] disabled:opacity-50"
             >
               {busy ? "Processing..." : "Process Reply →"}
