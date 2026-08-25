@@ -24,11 +24,11 @@ These four rules generate almost every other decision in this document. When a r
 | **P3** | **Stopping is a first-class feature.** Abstention, escalation, and rollback are designed with the same care as the happy path — not bolted on. | Silent failure, best-effort guessing, "the agent acted" treated as the only success condition. |
 | **P4** | **No component without a reason.** Every piece of infrastructure must answer "what would break without this," not "what's standard." | Message queues, vector DBs, microservices, Kubernetes, Redis, GraphQL — none of these solve a problem this system actually has. |
 
-These map directly onto the four hardest anticipated judge questions:
+These map directly onto four core architectural design decisions:
 - *"Why is retry/escalation deterministic and not LLM-driven?"* → **P1**. Compliance and predictability matter more than cleverness for money-adjacent actions; the LLM's job is language, not policy.
-- *"Why hand-roll a state machine instead of using a framework?"* → **P2**. A black-box agent framework is a worse answer than a legible one when a panel is going to ask "why."
+- *"Why hand-roll a state machine instead of using a framework?"* → **P2**. A transparent, hand-rolled state machine is predictable, debuggable, and provably finite without black-box agent framework overhead.
 - *"What happens when the LLM isn't sure?"* → **P3**. It never guesses; it asks a human, with a stated reason.
-- *"Why Postgres and not a vector DB / why no queue?"* → **P4**. This is structured state tracking at hackathon-to-early-production scale, not retrieval, and not high enough throughput to need async messaging.
+- *"Why Postgres and not a vector DB / why no queue?"* → **P4**. This is structured state tracking at production-ready scale, not retrieval, and not high enough throughput to need async messaging.
 
 ---
 
@@ -249,7 +249,7 @@ erDiagram
 **Why this shape, specifically:**
 - `interactions.confidence` lives on the row, not just in a log line — it's queryable, so "show me every promise logged below 0.8 confidence" is a real query for both debugging and the eval report, not a grep through logs.
 - `promises` is a separate table from `interactions`, not a status flag on the invoice, because one invoice can accumulate a promise-broken → re-promised history, and the recovery metrics need that full sequence, not just the latest state.
-- `audit_log` is append-only at the database level (`REVOKE UPDATE, DELETE` on the table for the application role), not just by application convention — a judge asking "how do you *guarantee* this log can't be edited" gets a real answer, not a policy document.
+- `audit_log` is append-only at the database level (`REVOKE UPDATE, DELETE` on the table for the application role), not just by application convention — when an auditor asks "how do you *guarantee* this log can't be edited", this provides a cryptographic and permission-level guarantee.
 - `AUDIT_LOG.actor` distinguishes `agent` (deterministic engine), `human` (merchant action), and `system` (webhook-triggered, e.g. payment confirmed) — so the audit trail can answer "did a human or the agent make this call" at a glance.
 
 ---

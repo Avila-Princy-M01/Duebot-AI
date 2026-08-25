@@ -12,7 +12,7 @@
 
 ## Safety Checklist
 
-- [ ] No safety invariants violated (read `skills.md` §6.2)
+- [ ] No safety invariants violated (read `ARCHITECTURE.md`)
 - [ ] Audit log updated for any state transitions
 - [ ] No hardcoded secrets, URLs, or API keys
 - [ ] New env vars documented in `.env.example`
@@ -36,7 +36,7 @@
 
 ## Demo Impact
 
-<!-- Does this change affect the demo? If yes, what should the judge see? -->
+<!-- Does this change affect the demo? If yes, what should the reviewer see? -->
 
 ## Screenshots / recordings
 

@@ -343,7 +343,7 @@ def transition(
             check) — this function does not re-derive it.
         reasoning: A one-sentence, human-readable explanation of why this
             transition is happening now. This is what a merchant sees in
-            the audit log viewer and what a judge sees when asking "why did
+            the audit log viewer and what an auditor sees when asking "why did
             it do that" — never leave it empty or generic.
         actor: Who/what caused this transition. Defaults to `"agent"`.
         metadata: Optional structured detail for the audit row (e.g. the

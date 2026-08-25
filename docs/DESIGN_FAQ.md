@@ -1,4 +1,4 @@
-# Judge FAQ (Quantitative & Design Defense)
+# System Design & Architecture FAQ
 
 1. **Isn’t this Razorpay Active Revenue Recovery?**
    Active Revenue Recovery retries failed recurring *debits*. DueBot automates unpaid B2B *invoices* (receivables), extracts payment promise dates over conversational channels, and escalates when promises break.

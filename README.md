@@ -4,7 +4,7 @@ An AI collections agent for overdue **B2B receivables**, built for the Razorpay 
 
 DueBot watches a merchant's overdue invoices, decides **when** to nudge (WhatsApp-first, hard contact caps), parses buyer replies into structured intents, tracks promise-to-pay dates, and escalates when a promise breaks — or when the model is not confident. It **never moves money**. It only requests payment via Razorpay Payment Links. Every state transition is an append-only audit row.
 
-This is a hiring-evaluation codebase: deterministic core, LLM periphery, tests, and a three-way eval — not a chatbot wrapper.
+**DueBot** is a production-grade autonomous collections agent for overdue B2B receivables: deterministic core, LLM periphery, comprehensive test suite, and an empirical three-way baseline evaluation — not a chatbot wrapper.
 
 ## Architecture (one diagram)
 
@@ -23,7 +23,7 @@ flowchart LR
 
 The LLM never decides whether to act. `engine/policy.py` and `engine/states.py` do.
 
-Full design: [ARCHITECTURE.md](ARCHITECTURE.md). Demo script: [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md). FAQ: [docs/JUDGE_FAQ.md](docs/JUDGE_FAQ.md). Eval: [docs/EVALUATION_METHODOLOGY.md](docs/EVALUATION_METHODOLOGY.md).
+Full design: [ARCHITECTURE.md](ARCHITECTURE.md). Demo script: [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md). FAQ: [docs/DESIGN_FAQ.md](docs/DESIGN_FAQ.md). Eval: [docs/EVALUATION_METHODOLOGY.md](docs/EVALUATION_METHODOLOGY.md).
 
 ## Quickstart
 
