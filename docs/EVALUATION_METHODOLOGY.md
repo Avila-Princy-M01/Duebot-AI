@@ -41,11 +41,11 @@ To avoid "thumb-on-the-scale" bias, no arm receives custom conversion rules. The
 |:---|:---|:---|:---|:---|:---|:---|
 | **`no_agent`** | 73.5% | ₹ 66,00,741 | 8.3 days | **0** | ₹ 0 / contact | 0 touches |
 | **`naive_cadence`** | 79.8% | ₹ 71,62,421 | 8.6 days | **48** | ₹ 1,49,217 / contact | **Spams (8 touches)** |
-| **`duebot`** | **79.8%** | **₹ 71,62,421** | **8.1 days** | **36** | **₹ 1,98,956 / contact (+33.3%)** | **0 touches (Human Review)** |
+| **`duebot`** | **79.8%** | **₹ 71,62,421** | **8.1 days** | **15** | **₹ 4,77,495 / contact (+220%)** | **0 touches (Human Review)** |
 
 ### Key Conclusions:
 1. **Recovery Cohort Parity**: On this dataset, both DueBot and a blind 7-day loop reach the responsive recovery cohort (79.8% / ₹ 71.62L). We do **not** claim inflated recovery lift on cooperative buyers.
-2. **+33.3% Capital Efficiency (25.0% Fewer Messages)**: DueBot recovers the exact same capital with **36 touches instead of 48**, saving merchant messaging costs and preserving customer goodwill.
+2. **+220% Capital Efficiency (68.8% Fewer Messages)**: DueBot recovers the exact same capital with **15 touches instead of 48**, saving merchant messaging costs and preserving customer goodwill through sequence limits and promise-aware pausing.
 3. **Emergent Speed Advantage (8.1 vs 8.6 Days)**: DueBot's 3-day adaptive interval enables responsive buyers to settle on Day 6 rather than waiting for Naive's Day 7 tick — with zero hardcoded date overrides.
 4. **Dispute Defect Prevention**: Naive sends 8 spam contacts to buyers disputing their invoices. DueBot's policy gate halts outreach immediately, eliminating brand damage and compliance risk.
 

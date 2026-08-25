@@ -1,5 +1,5 @@
 {
-  "run_id": "44d32228-ddc6-4e9f-91df-f4fa18975174",
+  "run_id": "c9b28951-a684-4df6-8698-734b0fd63299",
   "as_of": "2026-08-21",
   "n_test": 71,
   "strategies": {
@@ -45,8 +45,8 @@
       "avg_days_to_recovery": 8.125,
       "promise_kept_rate": 0.2857142857142857,
       "false_escalation_rate": 0.0,
-      "total_contacts_sent": 36,
-      "recovery_per_contact": 198956.13888888888
+      "total_contacts_sent": 15,
+      "recovery_per_contact": 477494.73333333334
     }
   }
 }

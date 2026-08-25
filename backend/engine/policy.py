@@ -154,8 +154,8 @@ def can_contact(
         return PolicyDecision.blocked("buyer opted out — irreversible")
     if invoice.state in (InvoiceState.RECOVERED, InvoiceState.TERMINATED):
         return PolicyDecision.blocked("invoice lifecycle is terminal — no further contact")
-    if invoice.state is InvoiceState.HUMAN_REVIEW:
-        return PolicyDecision.blocked("invoice is in human review — agent must not nudge")
+    if invoice.state in (InvoiceState.HUMAN_REVIEW, InvoiceState.ESCALATED):
+        return PolicyDecision.blocked("invoice is escalated/in human review — agent must not nudge")
 
     contacts = count_outbound_in_window(history, as_of=as_of)
     if contacts >= max_contacts:
