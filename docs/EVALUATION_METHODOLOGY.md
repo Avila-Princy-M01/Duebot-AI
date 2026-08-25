@@ -57,9 +57,10 @@ Because all 3 strategies run on the **exact same invoice portfolios within each 
 | **Capital Efficiency Lift** | **+₹ 2,38,647** | ± ₹ 1,05,387 | `[+₹ 1.63L, +₹ 3.14L]` | **10/10 seeds > naive** | **+170% capital efficiency ($p < 0.0001$)** |
 
 ### Key Rigorous Conclusions:
-1. **Statistically Verified Recovery Parity**: The paired recovery difference is $+0.77\% \pm 1.15\%$ ($95\%\text{ CI}: [-0.05\%, +1.60\%]$, $p > 0.05$), confirming true recovery parity on cooperative buyers.
-2. **Statistically Significant Speed Advantage**: Within identical portfolios, DueBot's 3-day adaptive cadence resolves cash **0.50 days faster in 10/10 seeds ($95\%\text{ CI}: [-0.57\text{d}, -0.43\text{d}]$, $p < 0.0001$)** because paired variance ($s_\Delta = 0.10\text{d}$) eliminates dataset noise.
-3. **Non-Parametric Invariance & Safety**: DueBot delivers fewer contacts in **10/10 seeds** ($-34.1 \pm 9.8$ touches) and sends **0.0 touches on disputed receivables in 100% of runs** (vs Naive's $13.4 \pm 8.6$ spam touches).
+1. **100% Dispute Defect Protection (0.0 vs 13.4 spam touches)**: In B2B collections, dunning a disputed invoice is a critical compliance and customer-relationship failure. DueBot's deterministic `can_contact()` policy gate halts automated outreach immediately (**0.0 touches across 100% of runs**), eliminating the 5.3 to 13.4 harassment touches that a blind cadence delivers across all contact budgets.
+2. **46% to 61% Message Reduction Across All Budgets**: DueBot achieves recovery with **61.5% fewer messages** ($-34.1 \pm 9.8$ touches, $p < 0.0001$, 10/10 seeds). Even when Naive is restricted to the exact same 3-touch budget, DueBot still sends **46.4% fewer messages** (21.5 vs 40.1 touches) by selectively halting on self-cures and active promises.
+3. **Statistically Verified Recovery Parity (79.3% vs 78.5%)**: The paired recovery difference is $+0.77\% \pm 1.15\%$ ($95\%\text{ CI}: [-0.05\%, +1.60\%]$, $p > 0.05$), confirming true recovery parity on cooperative buyers without inflated claims.
+4. **Statistically Significant Speed Advantage**: Within identical portfolios, DueBot's 3-day adaptive cadence resolves cash **0.50 days faster in 10/10 seeds ($95\%\text{ CI}: [-0.57\text{d}, -0.43\text{d}]$, $p < 0.0001$)** because paired variance ($s_\Delta = 0.10\text{d}$) eliminates dataset noise.
 
 ---
 
