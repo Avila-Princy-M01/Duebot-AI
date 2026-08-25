@@ -114,47 +114,13 @@ def snapshots_from_generator(
     return rows
 
 
-def is_buyer_fatigued(invoice: SnapshotInvoice, clock_date: date) -> bool:
-    """Check if excessive contact frequency or premature pestering caused buyer churn."""
-    # Condition A: Contact fatigue — if an arm sent >= 4 total contacts without resolution,
-    # or exceeded 3 contacts in a 7-day rolling window (CFPB / Indian debt collection practice).
-    if invoice.contacts >= 4:
-        return True
-
-    clock_dt = datetime.combine(clock_date, time(12, 0), tzinfo=UTC)
-    contacts_in_window = sum(
-        1
-        for t in invoice.history
-        if t.direction == "outbound"
-        and clock_dt - timedelta(days=7)
-        <= (t.sent_at if t.sent_at.tzinfo else t.sent_at.replace(tzinfo=UTC))
-        <= clock_dt
-    )
-    if contacts_in_window > 3:
-        return True
-
-    # Condition B: Trust broken — collector pestered the buyer during an active promise window
-    if invoice.promised_date is not None and invoice.scripted_reply_date is not None:
-        pestered_during_promise = any(
-            t.direction == "outbound"
-            and invoice.scripted_reply_date < t.sent_at.date() < invoice.promised_date
-            for t in invoice.history
-        )
-        if pestered_during_promise:
-            return True
-
-    return False
-
-
 def shared_should_settle(invoice: SnapshotInvoice, clock_date: date) -> bool:
     """Neutral, shared buyer settlement model used identically across all 3 strategies.
 
     Settlement conditions are driven strictly by ground-truth buyer properties:
     1. Organic self-cure: Buyer pays 3 days post-due without intervention.
-    2. Kept promise: Buyer pays when the promised date is reached after receiving outreach,
-       provided outreach respected the commitment (did not pester during promise window).
-    3. Nudge conversion: Non-disputed, non-broken-promise buyer pays after receiving 2-3 touches,
-       provided the relationship was not burned by over-contact fatigue (>= 4 contacts).
+    2. Kept promise: Buyer pays when the promised date is reached after receiving outreach.
+    3. Nudge conversion: Non-disputed, non-broken-promise buyer pays after receiving >= 2 touches.
 
     Zero strategy-specific speed bonuses or artificial paid_date overrides.
     """
@@ -167,19 +133,15 @@ def shared_should_settle(invoice: SnapshotInvoice, clock_date: date) -> bool:
     if invoice.would_have_paid_without_intervention is True:
         return clock_date >= invoice.due_date + timedelta(days=3)
 
-    # Over-contact fatigue or premature pestering burns the relationship -> recovery lost
-    if is_buyer_fatigued(invoice, clock_date):
-        return False
-
     # 2. Kept Promise
     if outbound_count > 0 and invoice.promise_outcome == "kept":
         if invoice.promised_date is not None:
             return clock_date >= invoice.promised_date
         return clock_date >= invoice.due_date + timedelta(days=7)
 
-    # 3. Nudge Conversion (converts between 2 and 3 touches; >= 4 triggers fatigue)
+    # 3. Nudge Conversion (converts once buyer receives >= 2 touches before 45 days)
     return bool(
-        2 <= outbound_count <= 3
+        outbound_count >= 2
         and invoice.promise_outcome != "broken"
         and (clock_date - invoice.due_date).days < 45
     )
