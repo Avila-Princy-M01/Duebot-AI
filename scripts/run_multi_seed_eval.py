@@ -43,6 +43,16 @@ class MetricStats:
         return (self.ci95_high - self.ci95_low) / 2.0
 
     @property
+    def positive_count(self) -> int:
+        """Count of observations strictly greater than zero."""
+        return sum(1 for x in self.values if x > 0)
+
+    @property
+    def non_positive_count(self) -> int:
+        """Count of observations less than or equal to zero."""
+        return sum(1 for x in self.values if x <= 0)
+
+    @property
     def t_statistic(self) -> float:
         """Paired Student's t-statistic (mean / sem)."""
         return self.mean / self.sem if self.sem > 0 else 0.0
@@ -299,6 +309,13 @@ def run_heterogeneity_sweep(
                 float(sum(inv.contacts for inv in sim_due if inv.status == "disputed"))
             )
 
+        # Compute paired differences within seed
+        paired_rec_deltas = [d - n for d, n in zip(d_rec, n_rec, strict=True)]
+        paired_red_pcts = [
+            (1.0 - d / n) * 100 if n > 0 else 0.0
+            for d, n in zip(d_cnt, n_cnt, strict=True)
+        ]
+
         st_nr = compute_stats(n_rec)
         st_dr = compute_stats(d_rec)
         st_nc = compute_stats(n_cnt)
@@ -306,18 +323,18 @@ def run_heterogeneity_sweep(
         st_nd = compute_stats(n_dsp)
         st_dd = compute_stats(d_dsp)
 
-        red_pct = (1.0 - st_dc.mean / st_nc.mean) * 100 if st_nc.mean > 0 else 0.0
-        delta_rec = st_dr.mean - st_nr.mean
+        st_paired_rec = compute_stats(paired_rec_deltas)
+        st_paired_red = compute_stats(paired_red_pcts)
 
         rows.append(
             {
                 "threshold": th,
                 "naive_rec": st_nr,
                 "duebot_rec": st_dr,
-                "delta_rec": delta_rec,
+                "paired_rec": st_paired_rec,
                 "naive_contacts": st_nc,
                 "duebot_contacts": st_dc,
-                "contact_reduction_pct": red_pct,
+                "paired_red": st_paired_red,
                 "naive_disputes": st_nd,
                 "duebot_disputes": st_dd,
             }
@@ -504,18 +521,20 @@ def main() -> None:
     print("\n### 4. Buyer Touch-Need Heterogeneity Sweep (Operating Boundary Analysis)")
     print(
         "| Buyer Touch Requirement | Naive Recovery (%) | DueBot Recovery (%) | "
-        "Recovery Delta | Naive Contacts | DueBot Contacts | Operating Regime |"
+        "Paired Delta (95% CI) | Naive Contacts | DueBot Contacts | "
+        "Paired Message Reduction | Operating Regime |"
     )
-    print("|:---|:---|:---|:---|:---|:---|:---|")
+    print("|:---|:---|:---|:---|:---|:---|:---|:---|")
 
     het_results = run_heterogeneity_sweep(HETEROGENEITY_SWEEP, SEEDS)
     for hr in het_results:
         th_val = hr["threshold"]
         nr = hr["naive_rec"].mean
         dr = hr["duebot_rec"].mean
-        d_rec = hr["delta_rec"]
+        hr_prec = hr["paired_rec"]
         nc = hr["naive_contacts"].mean
         dc = hr["duebot_contacts"].mean
+        hr_pred = hr["paired_red"].mean
 
         if th_val == 1:
             regime = "Responsive (DueBot pauses on self-cure/review)"
@@ -524,9 +543,14 @@ def main() -> None:
         else:
             regime = "*Recalcitrant (DueBot 3-touch cap hands off to Human Review)*"
 
+        p_str = (
+            f"**{hr_prec.mean:+.2f}%** ± {hr_prec.std:.2f}% "
+            f"[{hr_prec.ci95_low:+.2f}%, {hr_prec.ci95_high:+.2f}%]"
+        )
+
         print(
             f"| **`T = {th_val} touches`** | {nr:.1f}% | {dr:.1f}% | "
-            f"**{d_rec:+.2f}%** | {nc:.1f} | {dc:.1f} | {regime} |"
+            f"{p_str} | {nc:.1f} | {dc:.1f} | **{hr_pred:.1f}% fewer** | {regime} |"
         )
 
     lakhs_str = f"+₹ {p_none_amt.mean/100000:.2f}L"

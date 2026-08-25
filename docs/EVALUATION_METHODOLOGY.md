@@ -101,13 +101,13 @@ To address the sensitivity of the comparison to the naive baseline's stopping co
 
 To address the question of whether DueBot's recovery parity is a structural artifact of the buyer response model, we sweep the required touch threshold ($T \in \{1, 2, 3, 4, 5\}$ touches) needed for recalcitrant buyers to convert across all 10 random seeds (~710 held-out test invoices):
 
-| Buyer Touch Requirement | Naive Recovery (%) | DueBot Recovery (%) | Recovery Delta | Naive Contacts | DueBot Contacts | Operating Regime & Policy Explanation |
-|:---|:---|:---|:---|:---|:---|:---|
-| **`T = 1 touch`** | 92.5% | 79.4% | **-13.17%** | 53.6 | 19.3 | **Responsive**: Naive spams day 0; DueBot routes disputed accounts to Human Review. |
-| **`T = 2 touches`** *(Default)* | 78.5% | 79.3% | **+0.77%** | 55.6 | 21.5 | **Parity Window**: DueBot matches recovery with **61.3% fewer messages** & 0 dispute spam. |
-| **`T = 3 touches`** | 78.2% | 79.0% | **+0.84%** | 57.4 | 23.6 | **Parity Window**: DueBot matches recovery with **58.9% fewer messages** & 0 dispute spam. |
-| **`T = 4 touches`** | 78.0% | 75.7% | **-2.30%** | 59.0 | 23.6 | **Recalcitrant (Intentional Under-Dunning)**: DueBot's 3-touch cap halts automated outreach & routes to `HUMAN_REVIEW`. |
-| **`T = 5 touches`** | 77.5% | 75.7% | **-1.79%** | 60.2 | 23.6 | **Recalcitrant (Intentional Under-Dunning)**: DueBot deliberately avoids sending 60+ touches to protect account relationship. |
+| Buyer Touch Requirement | Naive Recovery (%) | DueBot Recovery (%) | Paired Delta (95% CI) | Naive Contacts | DueBot Contacts | Paired Message Reduction | Operating Regime & Policy Explanation |
+|:---|:---|:---|:---|:---|:---|:---|:---|
+| **`T = 1 touch`** | 92.5% | 79.4% | **-13.17%** ± 5.13% `[-16.84%, -9.50%]` | 53.6 | 19.3 | **64.1% fewer** | **Responsive**: Naive spams day 0; DueBot routes disputed accounts to Human Review. |
+| **`T = 2 touches`** *(Default)* | 78.5% | 79.3% | **+0.77%** ± 1.15% `[-0.05%, +1.60%]` | 55.6 | 21.5 | **61.5% fewer** | **Parity Window**: DueBot matches recovery with **61.5% fewer messages** & 0 dispute spam. |
+| **`T = 3 touches`** | 78.2% | 79.0% | **+0.84%** ± 1.27% `[-0.06%, +1.75%]` | 57.4 | 23.6 | **59.2% fewer** | **Parity Window**: DueBot matches recovery with **59.2% fewer messages** & 0 dispute spam. |
+| **`T = 4 touches`** | 78.0% | 75.7% | **-2.30%** ± 4.14% `[-5.26%, +0.66%]` | 59.0 | 23.6 | **60.4% fewer** | **Recalcitrant (Intentional Under-Dunning)**: DueBot's 3-touch cap halts automated outreach & routes to `HUMAN_REVIEW`. |
+| **`T = 5 touches`** | 77.5% | 75.7% | **-1.79%** ± 3.89% `[-4.57%, +0.99%]` | 60.2 | 23.6 | **61.2% fewer** | **Recalcitrant (Intentional Under-Dunning)**: DueBot deliberately avoids sending 60+ touches to protect account relationship. |
 
 ### Intellectual Takeaways & Boundary Conditions:
 1. **The Parity Window ($T \in \{2, 3\}$)**: When debtors respond within 2 to 3 touches, DueBot achieves full recovery parity while slashing message volume by ~60% and guaranteeing zero harassment touches on disputed accounts.
