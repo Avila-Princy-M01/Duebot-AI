@@ -119,7 +119,8 @@ def shared_should_settle(invoice: SnapshotInvoice, clock_date: date) -> bool:
 
     Settlement conditions are driven strictly by ground-truth buyer properties:
     1. Organic self-cure: Buyer pays 3 days post-due without intervention.
-    2. Kept promise: Buyer pays when the promised date is reached after receiving a touch.
+    2. Kept promise: Buyer pays when the promised date is reached after receiving a touch,
+       provided outreach respected the commitment (did not pester before the promise date).
     3. Nudge conversion: Non-disputed, non-broken-promise buyer pays after receiving >= 2 touches.
 
     Zero strategy-specific speed bonuses or artificial paid_date overrides.
@@ -132,6 +133,17 @@ def shared_should_settle(invoice: SnapshotInvoice, clock_date: date) -> bool:
     # 1. Self-cure
     if invoice.would_have_paid_without_intervention is True:
         return clock_date >= invoice.due_date + timedelta(days=3)
+
+    # Buyer fatigue / trust break: pestering a buyer *during* an active promise window
+    # causes friction, cancelling the promise fulfillment.
+    if invoice.promised_date is not None and invoice.scripted_reply_date is not None:
+        pestered_during_promise = any(
+            t.direction == "outbound"
+            and invoice.scripted_reply_date < t.sent_at.date() < invoice.promised_date
+            for t in invoice.history
+        )
+        if pestered_during_promise:
+            return False
 
     # 2. Kept promise
     if outbound_count > 0 and invoice.promise_outcome == "kept":
@@ -229,11 +241,6 @@ def simulate_naive_cadence(
             # Blind send (no policy check): sends on disputed, exceeds weekly frequency caps
             if len(clone.history) < MAX_NAIVE_CONTACTS:
                 clone.history.append(SnapshotTouch(direction="outbound", sent_at=clock_dt))
-
-            # Disputed invoices in naive get escalated only after aggressive touches
-            if clone.status == "disputed" and len(clone.history) >= 4:
-                clone.state = InvoiceState.ESCALATED
-                break
 
             # Buyer response model check (shared, neutral across all arms)
             if shared_should_settle(clone, clock_date) and clone.status != "disputed":

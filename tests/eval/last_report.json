@@ -1,5 +1,5 @@
 {
-  "run_id": "d9a27a1e-1169-45a7-950a-e9482c4c9ae6",
+  "run_id": "44d32228-ddc6-4e9f-91df-f4fa18975174",
   "as_of": "2026-08-21",
   "n_test": 71,
   "strategies": {
@@ -30,8 +30,8 @@
       "avg_days_to_recovery": 8.589285714285714,
       "promise_kept_rate": 0.2857142857142857,
       "false_escalation_rate": 0.0,
-      "total_contacts_sent": 43,
-      "recovery_per_contact": 166567.93023255814
+      "total_contacts_sent": 48,
+      "recovery_per_contact": 149217.10416666666
     },
     "duebot": {
       "eval_set_size": 71,

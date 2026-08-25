@@ -5,10 +5,10 @@
 
 2. **How is the baseline comparison evaluated fairly?**
    All 3 evaluation strategies (`no_agent`, `naive_cadence`, `duebot`) share **one neutral, identical buyer response model** (`shared_should_recover` in `baselines.py`). Recovery outcomes are driven strictly by ground-truth generator labels, not arm-specific rules:
-   * **Equal Recovery Rate (79.8% / ₹ 71.62L)**: Both DueBot and naive cadence reach the nudge-responsive buyers.
-   * **+19.4% Higher Capital Efficiency (₹ 1,98,956 vs ₹ 1,66,568 per contact)**: DueBot achieves maximum recovery with **16.3% fewer contacts** (36 vs 43).
-   * **Faster Resolution (8.1 vs 8.6 days)**: Early, context-aware WhatsApp payment links accelerate cash collection.
-   * **Dispute Abstention**: Naive cadence blindly contacts disputed invoices 4 times, whereas DueBot routes them to `HUMAN_REVIEW` with 0 contacts.
+   * **Equal Recovery Rate (79.8% / ₹ 71.62L)**: Both DueBot and naive cadence reach the nudge-responsive cohort. We do not claim an artificial recovery boost on cooperative buyers.
+   * **+33.3% Higher Capital Efficiency (₹ 1,98,956 vs ₹ 1,49,217 per contact)**: DueBot achieves maximum recovery with **25.0% fewer contacts** (36 vs 48).
+   * **Faster Resolution (8.1 vs 8.6 days)**: Emerges naturally from DueBot's 3-day adaptive interval vs Naive's static 7-day grid.
+   * **Dispute Abstention**: Naive cadence blindly spams disputed invoices (8 contacts), whereas DueBot routes them to `HUMAN_REVIEW` with 0 contacts.
 
 3. **What happens on disputed or ambiguous replies?**
    `intent=dispute` or low-confidence replies (`confidence < 0.7`) immediately halt automated nudging and route the invoice to `HUMAN_REVIEW` (0 contacts sent, 0% false escalations).

@@ -101,14 +101,14 @@ Executed via `python scripts/run_eval.py` driving the **real deterministic engin
 
 | Strategy | Recovery Rate | Total Recovered (INR) | Avg Days to Recovery | Contacts Sent | Recovery / Contact (Capital Efficiency) | Disputed Invoices |
 |----------|---------------|-----------------------|----------------------|---------------|---------------------------------|-------------------|
-| `no_agent` (Self-cure only) | 73.5% | ₹ 66,00,741 | 8.5 days | 0 | ₹ 0 / contact | 0 contacts |
-| `naive_cadence` (Blind 7-day interval) | 79.8% | ₹ 71,62,421 | 8.6 days | 43 | ₹ 1,66,568 / contact | Blindly spams (4 contacts) |
-| **`duebot` (Policy-aware agent)** | **79.8%** | **₹ 71,62,421** | **8.1 days** | **36** | **₹ 1,98,956 / contact** | **Routes to `HUMAN_REVIEW` (0 contacts)** |
+| `no_agent` (Self-cure only) | 73.5% | ₹ 66,00,741 | 8.3 days | 0 | ₹ 0 / contact | 0 contacts |
+| `naive_cadence` (Blind 7-day interval) | 79.8% | ₹ 71,62,421 | 8.6 days | 48 | ₹ 1,49,217 / contact | Blindly spams (8 contacts) |
+| **`duebot` (Policy-aware agent)** | **79.8%** | **₹ 71,62,421** | **8.1 days** | **36** | **₹ 1,98,956 / contact (+33.3%)** | **Routes to `HUMAN_REVIEW` (0 contacts)** |
 
 ### Key Takeaways:
 1. **Real Engine Execution**: DueBot runs its actual state machine (`transition`), policy guard (`can_contact`), and scheduler (`next_action_at`) on every simulated clock tick.
-2. **+19.4% Higher Capital Efficiency (₹ 1.99L vs ₹ 1.67L / contact)**: DueBot achieves maximum recovery while sending **16.3% fewer contacts** (36 vs 43) due to weekly frequency caps and promise-aware pausing.
-3. **Faster Cash Resolution (8.1 vs 8.6 days)**: Early WhatsApp payment links accelerate resolution.
+2. **+33.3% Higher Capital Efficiency (₹ 1.99L vs ₹ 1.49L / contact)**: DueBot achieves maximum recovery while sending **25.0% fewer contacts** (36 vs 48) due to weekly frequency caps and promise-aware pausing.
+3. **Faster Emergent Cash Resolution (8.1 vs 8.6 days)**: Driven naturally by DueBot's 3-day adaptive interval vs Naive's 7-day timer.
 4. **Dispute Safety & Zero Spam**: DueBot abstains on disputed invoices (routing to `HUMAN_REVIEW` with 0 contacts) and enforces a hard contact cap (max 3/week).
 
 ## Design decisions (why this, not that)
