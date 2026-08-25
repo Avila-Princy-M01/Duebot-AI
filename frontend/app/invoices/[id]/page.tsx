@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { notFound } from "next/navigation";
 import { InvoiceTimeline } from "../../../components/invoices/InvoiceTimeline";
 import { getInvoice, injectReply, previewNudge, triggerNudge } from "../../../lib/api";
 import type { InvoiceDetail, NudgePreview } from "../../../lib/types";
@@ -13,16 +14,33 @@ export default function InvoiceDetailPage({ params }: InvoiceDetailPageProps) {
   const [invoice, setInvoice] = useState<InvoiceDetail | null>(null);
   const [preview, setPreview] = useState<NudgePreview | null>(null);
   const [reply, setReply] = useState("will sort it out soon");
+  const [isNotFound, setIsNotFound] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     void getInvoice(params.id)
-      .then((res) => setInvoice(res.data))
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : "load failed"));
+      .then((res) => {
+        if (!res?.data) {
+          setIsNotFound(true);
+        } else {
+          setInvoice(res.data);
+        }
+      })
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : "";
+        if (msg.includes("404") || msg.toLowerCase().includes("not found")) {
+          setIsNotFound(true);
+        } else {
+          setError(msg || "Failed to load invoice");
+        }
+      });
   }, [params.id]);
 
-  if (error) return <div className="rounded-xl border border-rose-500/30 bg-rose-950/30 p-4 text-xs text-rose-300">{error}</div>;
-  if (!invoice) return <div className="p-8 text-center text-xs text-slate-500">Loading invoice details...</div>;
+  if (isNotFound) {
+    notFound();
+  }
+  if (error) return <div className="rounded-xl border border-rose-500/30 bg-rose-950/30 p-4 text-xs text-rose-300" role="alert">{error}</div>;
+  if (!invoice) return <div className="p-8 text-center text-xs text-slate-500" aria-busy="true">Loading invoice details...</div>;
 
   return (
     <div className="space-y-6">

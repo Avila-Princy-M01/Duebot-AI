@@ -1,3 +1,4 @@
+import { notFound } from "next/navigation";
 import { BuyerVoiceBriefing } from "../../../components/buyers/BuyerVoiceBriefing";
 import { getBuyer } from "../../../lib/api";
 
@@ -6,8 +7,16 @@ interface BuyerDetailPageProps {
 }
 
 export default async function BuyerDetailPage({ params }: BuyerDetailPageProps) {
-  const payload = await getBuyer(params.id);
-  const buyer = payload.data;
+  let buyer;
+  try {
+    const payload = await getBuyer(params.id);
+    buyer = payload?.data;
+  } catch {
+    notFound();
+  }
+  if (!buyer) {
+    notFound();
+  }
   return (
     <div className="space-y-6">
       <div className="rounded-2xl border border-slate-800/80 bg-panel/70 p-6 backdrop-blur-md">
