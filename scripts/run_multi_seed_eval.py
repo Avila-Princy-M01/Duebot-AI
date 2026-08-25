@@ -59,12 +59,12 @@ class MetricStats:
 
     @property
     def sign_test_p(self) -> float:
-        """Exact two-tailed Binomial Sign Test p-value under H0: p=0.5."""
-        pos = sum(1 for x in self.values if x > 0)
-        neg = sum(1 for x in self.values if x < 0)
-        n = pos + neg
+        """Exact two-tailed Binomial Sign Test p-value under H0: p=0.5 (N = len(values))."""
+        n = len(self.values)
         if n == 0:
             return 1.0
+        pos = sum(1 for x in self.values if x > 0)
+        neg = sum(1 for x in self.values if x < 0)
         k = max(pos, neg)
         p_val = 2.0 * sum(math.comb(n, i) * (0.5**n) for i in range(k, n + 1))
         return min(p_val, 1.0)
@@ -560,8 +560,9 @@ def main() -> None:
         f"   DueBot recovers {p_none_rec.mean:+.2f}% ± {p_none_rec.std:.2f}% more cash than "
         f"self-cure alone\n"
         f"   (95% CI: [{p_none_rec.ci95_low:+.2f}%, {p_none_rec.ci95_high:+.2f}%], "
-        f"t = {p_none_rec.t_statistic:+.2f}, paired t-test p < 0.01, sign test p = 0.0039) "
-        f"across 10/10 seeds."
+        f"t = {p_none_rec.t_statistic:+.2f}, paired t-test p < 0.01,\n"
+        f"   sign test p = {p_none_rec.sign_test_p:.4f}) "
+        f"across {p_none_rec.positive_count}/{n_total} seeds."
     )
     print(
         "2. **100% Dispute Defect Protection**: In B2B collections, dunning a disputed\n"
@@ -571,7 +572,7 @@ def main() -> None:
     reduction_summary = (
         f"{p_red.mean:.1f}% in **{p_red.positive_count}/{n_total} seeds** "
         f"(95% CI: [{p_red.ci95_low:.1f}%, {p_red.ci95_high:.1f}%], "
-        f"t = {p_red.t_statistic:+.2f}, p < 0.001, sign test p = 0.0020)."
+        f"t = {p_red.t_statistic:+.2f}, p < 0.001, sign test p = {p_red.sign_test_p:.4f})."
     )
     print(
         f"3. **46.4% to 61.5% Message Reduction Across All Budgets**:\n"
@@ -583,7 +584,7 @@ def main() -> None:
         f"**{p_days.non_positive_count}/{n_total} seeds** "
         f"(paired mean: {p_days.mean:+.2f} ± {p_days.std:.2f} d, "
         f"95% CI: [{p_days.ci95_low:+.2f}d, {p_days.ci95_high:+.2f}d], "
-        f"t = {p_days.t_statistic:+.2f}, p < 0.001, sign test p = 0.0020)."
+        f"t = {p_days.t_statistic:+.2f}, p < 0.001, sign test p = {p_days.sign_test_p:.4f})."
     )
     print(
         f"4. **Faster & Quieter (Tighter Interval Bounded by Policy)**: DueBot resolves cash\n"
