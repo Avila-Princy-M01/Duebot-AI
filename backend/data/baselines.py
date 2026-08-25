@@ -232,7 +232,7 @@ def simulate_naive_cadence(
                 clone.history.append(SnapshotTouch(direction="outbound", sent_at=clock_dt))
 
             # Buyer response model check (shared, neutral across all arms)
-            if shared_should_settle(clone, clock_date) and clone.status != "disputed":
+            if shared_should_settle(clone, clock_date):
                 clone.state = InvoiceState.RECOVERED
                 clone.paid_date = clock_date
                 clone.amount_paid = clone.total_amount
@@ -268,19 +268,6 @@ def simulate_duebot(invoices: list[SnapshotInvoice], as_of: date) -> list[Snapsh
         if clone.state is InvoiceState.RECOVERED:
             out.append(clone)
             continue
-
-        # If disputed prior to start, route to human review via state machine
-        if clone.status == "disputed":
-            if is_valid_transition(clone.state, TransitionEvent.ROUTED_TO_HUMAN):
-                tr = transition(
-                    clone,
-                    TransitionEvent.ROUTED_TO_HUMAN,
-                    reasoning="Disputed invoice routed to human review",
-                    occurred_at=datetime.combine(clone.due_date, time(9, 0), tzinfo=UTC),
-                )
-                clone.state = tr.new_state
-            else:
-                clone.state = InvoiceState.HUMAN_REVIEW
 
         start_date = min(clone.due_date, as_of)
         days_span = max((as_of - start_date).days, 1)
@@ -342,7 +329,12 @@ def simulate_duebot(invoices: list[SnapshotInvoice], as_of: date) -> list[Snapsh
                 break
 
             # 4. Outbound Nudge execution governed by real scheduler and can_contact() policy
-            if clone.state in (InvoiceState.OVERDUE, InvoiceState.NUDGED, InvoiceState.REMINDED):
+            if clone.state in (
+                InvoiceState.OVERDUE,
+                InvoiceState.NUDGED,
+                InvoiceState.REMINDED,
+                InvoiceState.DISPUTED,
+            ):
                 if (
                     clone.contacts >= 3
                     and clone.state is InvoiceState.NUDGED
@@ -381,6 +373,16 @@ def simulate_duebot(invoices: list[SnapshotInvoice], as_of: date) -> list[Snapsh
 
                         # Append actual outbound touch
                         clone.history.append(SnapshotTouch(direction="outbound", sent_at=clock_dt))
+                    elif clone.state is InvoiceState.DISPUTED and is_valid_transition(
+                        clone.state, TransitionEvent.ROUTED_TO_HUMAN
+                    ):
+                        tr = transition(
+                            clone,
+                            TransitionEvent.ROUTED_TO_HUMAN,
+                            reasoning=decision.reason,
+                            occurred_at=clock_dt,
+                        )
+                        clone.state = tr.new_state
 
             # 5. Inbound buyer reply processing
             if clone.scripted_reply_text and clone.scripted_reply_date == clock_date:

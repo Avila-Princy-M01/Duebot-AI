@@ -33,6 +33,9 @@ To avoid "thumb-on-the-scale" bias, no arm receives custom conversion rules. The
 - **Nudge Conversion**: Non-disputed, non-broken-promise buyer settles after receiving $\ge 2$ touches.
 - **Disputed Invoices**: Automated reminders never force settlement on disputed receivables.
 
+> [!NOTE]
+> **Load-Bearing Behavioral Assumption**: The simulation assumes non-disputed cooperative buyers convert after $\ge 2$ touches (`shared_should_settle`). If a real-world enterprise debtor cohort requires 4+ touches to convert, DueBot's default 3-touch sequence cap would under-dun. In production, this threshold is an operator-configurable policy knob (`MAX_CONTACTS_PER_WEEK` and sequence thresholds in `policy.py`), not an immutable engine invariant.
+
 ---
 
 ## 3. Multi-Seed Robustness (10 Seeds, ~710 Test Invoices)
@@ -77,6 +80,8 @@ To address the sensitivity of the comparison to the naive baseline's stopping co
 | **`MAX_NAIVE = 6`** | 78.5% | 79.3% | 48.0 | 21.5 | **55.2% fewer** | **9.0 spam touches** | **0.0 touches** |
 | **`MAX_NAIVE = 8`** | 78.5% | 79.3% | 51.7 | 21.5 | **58.4% fewer** | **10.9 spam touches** | **0.0 touches** |
 | **`MAX_NAIVE = 12`** *(Default Unbounded)* | 78.5% | 79.3% | 55.6 | 21.5 | **61.3% fewer** | **13.4 spam touches** | **0.0 touches** |
+
+*(Estimator Footnote: §3 reports the paired mean of per-seed contact reduction ratios ($61.5\% \pm 6.2\%$), whereas the $MAX\_NAIVE = 12$ row above computes the ratio of aggregate means ($1.0 - 21.5 / 55.6 = 61.3\%$). Both estimators yield the same conclusion within $0.2\%$).*
 
 ### Why This Pre-empts the Budget Interrogation:
 1. **At Matched Budget (`MAX_NAIVE = 3`)**: Even when a blind cadence is constrained to the exact same 3-touch maximum as DueBot, DueBot still sends **46.4% fewer messages (21.5 vs 40.1 touches)**. This occurs because DueBot selectively halts on self-cures and promises, whereas a blind loop touches *every* invoice 3 times.
