@@ -56,7 +56,6 @@ export default async function HomePage() {
           value={String(invoices.length)}
           type="loaded"
           hint="Total receivables in system"
-          trend="100% Validated"
         />
         <MetricCard
           label="Overdue / Open"
