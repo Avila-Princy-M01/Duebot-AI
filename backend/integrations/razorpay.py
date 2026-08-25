@@ -59,11 +59,10 @@ class RazorpayClient:
         return self._sdk is None
 
     def verify_signature(self, raw_body: bytes, signature: str | None) -> bool:
-        """Verify webhook signature against configured secret."""
-        if not signature:
+        """Verify webhook signature against configured secret (fails closed)."""
+        if not signature or not self._settings.razorpay_webhook_secret:
             return False
-        secret = self._settings.razorpay_webhook_secret or "test_webhook_secret"
-        return verify_webhook_signature(raw_body, signature, secret)
+        return verify_webhook_signature(raw_body, signature, self._settings.razorpay_webhook_secret)
 
     def create_payment_link(
         self,

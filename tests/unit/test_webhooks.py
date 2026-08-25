@@ -1,4 +1,4 @@
-"""Unit tests for Razorpay webhook signature verification and event processing."""
+"""Unit tests for Razorpay webhook signature verification, security, and event processing."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ from datetime import date
 from decimal import Decimal
 
 import pytest
+from backend.config import Settings, get_settings
 from backend.dependencies import get_db
 from backend.engine.states import InvoiceState
 from backend.main import create_app
@@ -18,7 +19,7 @@ from backend.models.merchant import Merchant
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-TEST_SECRET = "test_webhook_secret"
+TEST_SECRET = "test_webhook_secret_key_12345"
 
 
 def _sign_payload(payload_bytes: bytes, secret: str = TEST_SECRET) -> str:
@@ -28,6 +29,40 @@ def _sign_payload(payload_bytes: bytes, secret: str = TEST_SECRET) -> str:
         msg=payload_bytes,
         digestmod=hashlib.sha256,
     ).hexdigest()
+
+
+@pytest.mark.asyncio
+async def test_webhook_unconfigured_secret_fails_closed(
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    """If razorpay_webhook_secret is not configured, endpoint must fail closed with 503."""
+    app = create_app()
+
+    async def _override_get_db():
+        async with session_factory() as s:
+            yield s
+
+    def _override_get_settings():
+        return Settings(razorpay_webhook_secret="", database_url="sqlite+aiosqlite:///:memory:")
+
+    app.dependency_overrides[get_db] = _override_get_db
+    app.dependency_overrides[get_settings] = _override_get_settings
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        payload = {"event": "payment_link.paid"}
+        body_bytes = json.dumps(payload).encode("utf-8")
+        res = await client.post(
+            "/api/webhooks/razorpay",
+            content=body_bytes,
+            headers={
+                "Content-Type": "application/json",
+                "X-Razorpay-Signature": "any_signature",
+            },
+        )
+        assert res.status_code == 503
+        assert "Razorpay webhook secret not configured" in res.json()["error"]["message"]
 
 
 @pytest.mark.asyncio
@@ -41,7 +76,11 @@ async def test_webhook_payment_link_paid_valid_signature(
         async with session_factory() as s:
             yield s
 
+    def _override_get_settings():
+        return Settings(razorpay_webhook_secret=TEST_SECRET, database_url="sqlite+aiosqlite:///:memory:")
+
     app.dependency_overrides[get_db] = _override_get_db
+    app.dependency_overrides[get_settings] = _override_get_settings
 
     async with session_factory() as session:
         merchant = Merchant(
@@ -130,6 +169,100 @@ async def test_webhook_payment_link_paid_valid_signature(
 
 
 @pytest.mark.asyncio
+async def test_webhook_idempotent_retry_on_already_recovered(
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    """Subsequent delivery of payment_link.paid returns 200 already_recovered without error."""
+    app = create_app()
+
+    async def _override_get_db():
+        async with session_factory() as s:
+            yield s
+
+    def _override_get_settings():
+        return Settings(razorpay_webhook_secret=TEST_SECRET, database_url="sqlite+aiosqlite:///:memory:")
+
+    app.dependency_overrides[get_db] = _override_get_db
+    app.dependency_overrides[get_settings] = _override_get_settings
+
+    async with session_factory() as session:
+        merchant = Merchant(
+            merchant_id="mer_wh_2",
+            business_name="Test Merchant 2",
+            business_type="Retail",
+            gstin="29ABCDE1234F1Z7",
+            city="Bengaluru",
+            state_code="KA",
+            onboarded_date=date(2026, 1, 1),
+        )
+        buyer = Buyer(
+            buyer_id="buy_wh_2",
+            merchant_id="mer_wh_2",
+            company_name="Acme Corp 2",
+            contact_name="Ramesh Kumar",
+            phone="+919876543211",
+            email="ramesh2@acme.com",
+            gstin="29ABCDE1234F1Z8",
+            reliability_tier="reliable",
+            on_time_payment_rate=0.9,
+            relationship_since=date(2025, 1, 1),
+        )
+        invoice = Invoice(
+            invoice_id="inv_wh_2",
+            merchant_id="mer_wh_2",
+            buyer_id="buy_wh_2",
+            invoice_number="INV-WH-002",
+            issue_date=date(2026, 7, 1),
+            due_date=date(2026, 8, 1),
+            payment_terms_days=30,
+            subtotal_amount=Decimal("10000.00"),
+            gst_rate=18,
+            gst_amount=Decimal("1800.00"),
+            total_amount=Decimal("11800.00"),
+            amount_paid=Decimal("11800.00"),
+            status="paid",
+            risk_tier="low",
+            split="train",
+            state=InvoiceState.RECOVERED.value,
+            payment_link_id="plink_test_already_paid",
+        )
+        session.add_all([merchant, buyer, invoice])
+        await session.commit()
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        payload = {
+            "entity": "event",
+            "event": "payment_link.paid",
+            "payload": {
+                "payment_link": {
+                    "entity": {
+                        "id": "plink_test_already_paid",
+                        "status": "paid",
+                    }
+                }
+            },
+        }
+        body_bytes = json.dumps(payload).encode("utf-8")
+        signature = _sign_payload(body_bytes)
+
+        res = await client.post(
+            "/api/webhooks/razorpay",
+            content=body_bytes,
+            headers={
+                "Content-Type": "application/json",
+                "X-Razorpay-Signature": signature,
+            },
+        )
+        assert res.status_code == 200
+        data = res.json()
+        assert data["status"] == "already_recovered"
+        assert data["invoice_id"] == "inv_wh_2"
+        assert data["state"] == "recovered"
+
+
+@pytest.mark.asyncio
 async def test_webhook_invalid_signature_rejected(
     session_factory: async_sessionmaker[AsyncSession],
 ) -> None:
@@ -140,7 +273,11 @@ async def test_webhook_invalid_signature_rejected(
         async with session_factory() as s:
             yield s
 
+    def _override_get_settings():
+        return Settings(razorpay_webhook_secret=TEST_SECRET, database_url="sqlite+aiosqlite:///:memory:")
+
     app.dependency_overrides[get_db] = _override_get_db
+    app.dependency_overrides[get_settings] = _override_get_settings
 
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
@@ -182,7 +319,11 @@ async def test_webhook_non_settlement_event_ignored(
         async with session_factory() as s:
             yield s
 
+    def _override_get_settings():
+        return Settings(razorpay_webhook_secret=TEST_SECRET, database_url="sqlite+aiosqlite:///:memory:")
+
     app.dependency_overrides[get_db] = _override_get_db
+    app.dependency_overrides[get_settings] = _override_get_settings
 
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"

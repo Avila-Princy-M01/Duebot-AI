@@ -10,8 +10,9 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.config import get_settings
+from backend.config import Settings, get_settings
 from backend.dependencies import get_db
+from backend.engine.states import InvoiceState
 from backend.integrations.razorpay import verify_webhook_signature
 from backend.models.invoice import Invoice
 from backend.tasks.payment import confirm_payment
@@ -28,20 +29,28 @@ ALLOWED_SETTLEMENT_EVENTS = frozenset(
 async def handle_razorpay_webhook(
     request: Request,
     session: AsyncSession = Depends(get_db),
+    settings: Settings = Depends(get_settings),
     x_razorpay_signature: str | None = Header(default=None),
 ) -> dict[str, Any]:
     """Process incoming Razorpay webhook events with HMAC-SHA256 verification.
 
-    1. Enforces cryptographic signature verification on the raw request body.
+    1. Enforces cryptographic signature verification on the raw request body (fails closed).
     2. Filters specifically for settlement events (payment_link.paid / payment.captured).
     3. Locates the invoice via standard nested Razorpay payload entities.
-    4. Applies the deterministic PAYMENT_CONFIRMED lifecycle transition.
+    4. Handles idempotent webhook retries safely if the invoice is already RECOVERED.
+    5. Applies the deterministic PAYMENT_CONFIRMED lifecycle transition.
     """
-    settings = get_settings()
     raw_body = await request.body()
 
-    # 1. HMAC-SHA256 Signature Verification
-    secret = settings.razorpay_webhook_secret or "test_webhook_secret"
+    # 1. HMAC-SHA256 Signature Verification (fail closed if secret is not configured)
+    secret = settings.razorpay_webhook_secret
+    if not secret:
+        logger.error("webhook_secret_not_configured")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Razorpay webhook secret not configured",
+        )
+
     if not x_razorpay_signature or not verify_webhook_signature(
         raw_body, x_razorpay_signature, secret
     ):
@@ -124,7 +133,21 @@ async def handle_razorpay_webhook(
             "reason": "invoice_not_found",
         }
 
-    # 5. Apply deterministic state machine transition
+    # 5. Idempotent Retry Guard: If already RECOVERED, return 200 without duplicate transitions
+    if invoice.state == InvoiceState.RECOVERED.value:
+        logger.info(
+            "webhook_invoice_already_recovered",
+            invoice_id=invoice.invoice_id,
+            webhook_event=event,
+        )
+        return {
+            "status": "already_recovered",
+            "event": event,
+            "invoice_id": invoice.invoice_id,
+            "state": invoice.state,
+        }
+
+    # 6. Apply deterministic state machine transition
     updated = await confirm_payment(session, invoice)
     await session.commit()
     logger.info(
