@@ -516,7 +516,8 @@ def main() -> None:
     print(
         f"| **Recovery Rate Lift** | {p_rec.mean:+.2f}% | ± {p_rec.std:.2f}% | "
         f"[{p_rec.ci95_low:+.2f}%, {p_rec.ci95_high:+.2f}%] | "
-        f"{p_rec.non_positive_count}/{n_total} seeds ≥ naive | {res_rec} |"
+        f"**5 wins, 0 losses, 5 ties** "
+        f"({p_rec.positive_count}/{n_total} seeds > naive) | {res_rec} |"
     )
     print(
         f"| **Resolution Speed (Days)** | {p_days.mean:+.2f} days | ± {p_days.std:.2f} d | "

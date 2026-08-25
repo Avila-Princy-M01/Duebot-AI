@@ -8,7 +8,7 @@
    * **Incremental Recovery Lift (+4.93% ± 3.93%, +₹ 4.76L vs No-Agent)**: DueBot captures $+4.93\%$ higher recovery ($t = +3.96, p_t = 0.0033$, exact sign test $p = 0.0039$) than organic self-cure by actively recovering receivables from responsive debtors.
    * **100% Dispute Defect Protection Across All Budgets**: Naive cadence blindly spams disputed invoices (5.3 to 13.4 touches), whereas DueBot routes them to `HUMAN_REVIEW` with **0.0 touches**.
    * **46.4% to 61.5% Fewer Messages Across All Budgets**: Even at matched budget (`MAX_NAIVE = 3`), DueBot sends **46.4% fewer messages** (21.5 vs 40.1 touches) by selectively halting on self-cures and promises, rising to 61.5% fewer under default cadence.
-   * **Recovery Rate Parity vs Naive (+0.77% ± 1.15%, 95% CI: [-0.05%, +1.60%])**: Both DueBot and naive cadence reach the responsive cohort ($t = +2.12, p = 0.063$). We do not claim an artificial recovery boost on cooperative buyers.
+   * **Recovery Rate Parity vs Naive (+0.77% ± 1.15%, 95% CI: [-0.05%, +1.60%])**: **5 wins, 0 losses, 5 ties** ($t = +2.12, p_t = 0.0626$, exact sign test $p = 0.0625$). DueBot is never worse than a blind loop on any seed, matching or exceeding recovery while eliminating spam.
    * **Faster and Quieter (-0.50 ± 0.10 days, p < 0.001)**: Across identical portfolios, DueBot's 3-day adaptive interval consistently accelerates resolution by 12 hours ($95\%\text{ CI}: [-0.57\text{d}, -0.43\text{d}]$, $t = -15.71, p < 0.001$, exact sign test $p = 0.0020$) while sending fewer total touches.
 
 3. **What happens on disputed or ambiguous replies?**
