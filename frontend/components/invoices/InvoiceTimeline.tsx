@@ -1,4 +1,5 @@
 import type { AuditRow, InteractionRow } from "../../lib/types";
+import { formatTimestamp } from "../../lib/format";
 
 interface InvoiceTimelineProps {
   interactions: InteractionRow[];
@@ -9,17 +10,17 @@ export function InvoiceTimeline({ interactions, audit }: InvoiceTimelineProps) {
   return (
     <div className="grid gap-6 md:grid-cols-2">
       {/* Communication Log */}
-      <section className="rounded-2xl border border-slate-800/80 bg-panel/70 p-5 backdrop-blur-md shadow-lg space-y-3">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+      <section className="glass-panel rounded-3xl p-6 space-y-4 shadow-xl">
+        <div className="flex items-center justify-between border-b border-white/[0.08] pb-3.5">
           <h3 className="text-sm font-bold text-white flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-sky-400" />
+            <span className="h-2 w-2 rounded-full bg-sky-400 animate-pulse" />
             Communication Log ({interactions.length})
           </h3>
-          <span className="text-[11px] font-mono text-slate-500">WhatsApp Channel</span>
+          <span className="text-[11px] font-mono text-slate-400">WhatsApp Channel</span>
         </div>
 
         {interactions.length === 0 ? (
-          <p className="text-xs text-slate-500 py-4 text-center">No messages sent or received yet.</p>
+          <p className="text-xs text-slate-500 py-6 text-center">No messages sent or received yet.</p>
         ) : (
           <ol className="space-y-3">
             {interactions.map((item) => {
@@ -27,23 +28,23 @@ export function InvoiceTimeline({ interactions, audit }: InvoiceTimelineProps) {
               return (
                 <li
                   key={item.id}
-                  className={`rounded-xl border ${
-                    isOutbound ? "border-slate-800 bg-slate-900/90" : "border-indigo-500/30 bg-indigo-950/20"
-                  } p-3.5 space-y-2`}
+                  className={`glass-card rounded-2xl ${
+                    isOutbound ? "border-white/[0.08]" : "border-indigo-500/30 bg-indigo-950/20"
+                  } p-4 space-y-2.5`}
                 >
                   <div className="flex flex-wrap items-center justify-between gap-1 text-[11px]">
                     <div className="flex items-center gap-2">
                       <span
-                        className={`rounded-full border px-2 py-0.5 text-[10px] font-extrabold uppercase ${
+                        className={`rounded-full border px-2.5 py-0.5 text-[10px] font-extrabold uppercase ${
                           isOutbound
-                            ? "bg-sky-500/10 text-sky-400 border-sky-500/30"
-                            : "bg-purple-500/10 text-purple-400 border-purple-500/30"
+                            ? "bg-sky-500/10 text-sky-400 border-sky-400/30"
+                            : "bg-purple-500/10 text-purple-400 border-purple-400/30"
                         }`}
                       >
                         {item.direction}
                       </span>
                       {item.intent_label ? (
-                        <span className="rounded bg-slate-800 px-1.5 py-0.5 font-mono text-[10px] text-amber-300">
+                        <span className="rounded bg-slate-800 px-2 py-0.5 font-mono text-[10px] text-amber-300">
                           intent: {item.intent_label}
                         </span>
                       ) : null}
@@ -56,12 +57,12 @@ export function InvoiceTimeline({ interactions, audit }: InvoiceTimelineProps) {
                     ) : null}
                   </div>
 
-                  <p className="whitespace-pre-wrap font-mono text-xs text-slate-200 leading-relaxed bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/60">
+                  <p className="whitespace-pre-wrap font-mono text-xs text-slate-200 leading-relaxed bg-slate-950/70 p-3 rounded-xl border border-white/[0.06] shadow-inner">
                     {item.message_text}
                   </p>
 
-                  <p className="text-[10px] font-mono text-slate-500 text-right">
-                    {item.sent_at}
+                  <p className="text-[10px] font-mono text-slate-400 text-right">
+                    {formatTimestamp(item.sent_at)}
                   </p>
                 </li>
               );
@@ -142,8 +143,8 @@ export function InvoiceTimeline({ interactions, audit }: InvoiceTimelineProps) {
                     </div>
                   ) : null}
 
-                  <p className="text-[10px] font-mono text-slate-500 text-right">
-                    {item.occurred_at}
+                  <p className="text-[10px] font-mono text-slate-400 text-right">
+                    {formatTimestamp(item.occurred_at)}
                   </p>
                 </li>
               );

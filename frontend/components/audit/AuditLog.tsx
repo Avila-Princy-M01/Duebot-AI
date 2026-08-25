@@ -1,4 +1,5 @@
 import type { AuditRow } from "../../lib/types";
+import { formatTimestamp } from "../../lib/format";
 
 interface AuditLogProps {
   rows: AuditRow[];
@@ -6,19 +7,19 @@ interface AuditLogProps {
 
 export function AuditLog({ rows }: AuditLogProps) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-800/80 bg-panel/60 backdrop-blur-md shadow-xl">
+    <div className="glass-panel overflow-hidden rounded-3xl">
       <div className="overflow-x-auto">
         <table className="w-full text-left text-xs">
-          <thead className="border-b border-slate-800 bg-panel/90 text-slate-400 font-bold uppercase tracking-wider">
+          <thead className="border-b border-white/[0.08] bg-slate-900/80 text-slate-400 font-bold uppercase tracking-wider">
             <tr>
-              <th className="px-4 py-3.5">Timestamp</th>
+              <th className="px-4 py-3.5">Timestamp (UTC)</th>
               <th className="px-4 py-3.5">Invoice #</th>
               <th className="px-4 py-3.5">Transition</th>
               <th className="px-4 py-3.5">Actor</th>
               <th className="px-4 py-3.5">Policy Reasoning & Metadata</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-800/60 font-sans">
+          <tbody className="divide-y divide-white/[0.06] font-sans">
             {rows.length === 0 ? (
               <tr>
                 <td colSpan={5} className="px-4 py-8 text-center text-slate-500">
@@ -32,9 +33,9 @@ export function AuditLog({ rows }: AuditLogProps) {
                 const intent = meta?.intent as string | undefined;
 
                 return (
-                  <tr key={row.id} className="transition-colors hover:bg-slate-800/40 align-top">
+                  <tr key={row.id} className="transition-colors hover:bg-white/[0.03] align-top">
                     <td className="px-4 py-3.5 font-mono text-[11px] text-slate-400 whitespace-nowrap">
-                      {row.occurred_at}
+                      {formatTimestamp(row.occurred_at)}
                     </td>
                     <td className="px-4 py-3.5 font-mono font-bold text-sky-400">
                       <a href={`/invoices/${row.invoice_id}`} className="hover:underline">

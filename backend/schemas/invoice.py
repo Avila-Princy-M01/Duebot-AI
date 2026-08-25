@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_serializer
 
 
 class InvoiceOut(BaseModel):
@@ -45,6 +45,12 @@ class InteractionOut(BaseModel):
     confidence: float | None
     delivery_status: str
     attempt_number: int
+
+    @field_serializer("sent_at")
+    def serialize_sent_at(self, val: datetime) -> str:
+        if val.tzinfo is None:
+            val = val.replace(tzinfo=UTC)
+        return val.isoformat()
 
     model_config = {"from_attributes": True}
 

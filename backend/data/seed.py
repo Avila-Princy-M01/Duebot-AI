@@ -100,9 +100,7 @@ async def seed_from_generator(
         )
     await session.flush()
 
-    now_utc = datetime.now(UTC)
-
-    for inv in gen.invoices:
+    for idx, inv in enumerate(gen.invoices):
         state = initial_state_for_status(inv.status, inv.invoice_id in inbound_by_invoice)
         opted_out = inv.edge_case == "opt_out_mid_sequence"
         if opted_out:
@@ -139,8 +137,8 @@ async def seed_from_generator(
             )
         )
 
-        # Seed realistic audit trail entries so /audit and invoice details are populated
-        inv_created_at = min(_dt(f"{inv.issue_date}T09:00:00"), now_utc - timedelta(hours=10))
+        # Seed realistic audit trail entries with deterministic minute/second jitter
+        inv_created_at = _dt(f"{inv.issue_date}T09:{(idx * 3) % 60:02d}:{(idx * 7) % 60:02d}")
         session.add(
             AuditLog(
                 invoice_id=inv.invoice_id,
@@ -153,7 +151,7 @@ async def seed_from_generator(
             )
         )
         if state.value != "created":
-            due_dt = min(_dt(f"{inv.due_date}T10:00:00"), now_utc - timedelta(hours=5))
+            due_dt = _dt(f"{inv.due_date}T10:{(idx * 5) % 60:02d}:{(idx * 11) % 60:02d}")
             session.add(
                 AuditLog(
                     invoice_id=inv.invoice_id,
@@ -173,8 +171,12 @@ async def seed_from_generator(
                 "opted_out",
                 "recovered",
             ):
-                nudge_offset = timedelta(days=min(max(inv.days_overdue, 1), 5))
-                nudge_dt = min(due_dt + nudge_offset, now_utc - timedelta(hours=2))
+                nudge_offset = timedelta(
+                    days=min(max(inv.days_overdue, 1), 5),
+                    hours=(idx % 6),
+                    minutes=(idx * 7) % 60,
+                )
+                nudge_dt = due_dt + nudge_offset
                 session.add(
                     AuditLog(
                         invoice_id=inv.invoice_id,
@@ -190,7 +192,7 @@ async def seed_from_generator(
                 )
     await session.flush()
 
-    # Normalize synthetic message timestamps to be safely in the past
+    # Synthetic message timestamps directly from generator timeline
     attempt_by_invoice: dict[str, int] = {}
     for msg in gen.messages:
         if msg.direction == "outbound":
@@ -199,9 +201,7 @@ async def seed_from_generator(
         else:
             attempt = attempt_by_invoice.get(msg.invoice_id, 1)
 
-        raw_dt = _dt(msg.timestamp)
-        # Cap synthetic message timestamp to past so live tests always rank #1
-        msg_sent_at = min(raw_dt, now_utc - timedelta(hours=2))
+        msg_sent_at = _dt(msg.timestamp)
 
         session.add(
             Interaction(
