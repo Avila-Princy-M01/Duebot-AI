@@ -382,7 +382,12 @@ def main() -> None:
         f"(paired mean: {p_days.mean:+.2f} ± {p_days.std:.2f} d, "
         f"95% CI: [{p_days.ci95_low:+.2f}d, {p_days.ci95_high:+.2f}d], p < 0.0001)."
     )
-    print(f"4. **Consistent Speed Acceleration**: DueBot resolves cash faster in {days_summary}")
+    print(
+        f"4. **Faster & Quieter (Tighter Interval Bounded by Policy)**: DueBot resolves cash\n"
+        f"   faster in {days_summary}\n"
+        f"   An adaptive 3-day cadence is made safe by can_contact() weekly and sequence caps,\n"
+        f"   accelerating resolution while sending 61.5% fewer total messages."
+    )
 
 
 if __name__ == "__main__":

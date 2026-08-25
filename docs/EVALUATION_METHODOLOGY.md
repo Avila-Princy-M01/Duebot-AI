@@ -52,7 +52,7 @@ Because all 3 strategies run on the **exact same invoice portfolios within each 
 | Metric Delta (DueBot - Naive) | Paired Mean (Δ) | Paired Std Dev ($s_\Delta$) | 95% Confidence Interval | Sign Consistency | Statistical Conclusion |
 |:---|:---|:---|:---|:---|:---|
 | **Recovery Rate Lift** | **+0.77%** | ± 1.15% | `[-0.05%, +1.60%]` | 5/10 seeds ≥ naive | **Parity ($p > 0.05$)**: Confirms true recovery cohort parity |
-| **Resolution Speed** | **-0.50 days** | ± 0.10 days | `[-0.57d, -0.43d]` | **10/10 seeds ≤ naive** | **Faster ($p < 0.0001$)**: Consistent 12-hour resolution acceleration |
+| **Resolution Speed** | **-0.50 days** | ± 0.10 days | `[-0.57d, -0.43d]` | **10/10 seeds ≤ naive** | **Faster ($p < 0.0001$)**: 3-day cadence made safe by policy caps |
 | **Contact Reduction** | **-34.1 touches** | ± 9.8 touches | `[-41.1, -27.1]` | **10/10 seeds < naive** | **61.5% fewer messages ($p < 0.0001$)** |
 | *Derived Efficiency Lift* | *+₹ 2,38,647* | ± ₹ 1,05,387 | `[+₹ 1.63L, +₹ 3.14L]` | 10/10 seeds > naive | *Direct restatement of contact delta at parity recovery* |
 
@@ -62,7 +62,7 @@ Because all 3 strategies run on the **exact same invoice portfolios within each 
 1. **100% Dispute Defect Protection (0.0 vs 13.4 spam touches)**: In B2B collections, dunning a disputed invoice is a critical compliance and customer-relationship failure. DueBot's deterministic `can_contact()` policy gate halts automated outreach immediately (**0.0 touches across 100% of runs**), eliminating the 5.3 to 13.4 harassment touches that a blind cadence delivers across all contact budgets.
 2. **46% to 61% Message Reduction Across All Budgets**: DueBot achieves recovery with **61.5% fewer messages** ($-34.1 \pm 9.8$ touches, $p < 0.0001$, 10/10 seeds). Even when Naive is restricted to the exact same 3-touch budget, DueBot still sends **46.4% fewer messages** (21.5 vs 40.1 touches) by selectively halting on self-cures and active promises.
 3. **Statistically Verified Recovery Parity (79.3% vs 78.5%)**: The paired recovery difference is $+0.77\% \pm 1.15\%$ ($95\%\text{ CI}: [-0.05\%, +1.60\%]$, $p > 0.05$), confirming true recovery parity on cooperative buyers without inflated claims.
-4. **Statistically Significant Speed Advantage**: Within identical portfolios, DueBot's 3-day adaptive cadence resolves cash **0.50 days faster in 10/10 seeds ($95\%\text{ CI}: [-0.57\text{d}, -0.43\text{d}]$, $p < 0.0001$)** because paired variance ($s_\Delta = 0.10\text{d}$) eliminates dataset noise.
+4. **Faster and Quieter (Tighter Interval Bounded by Policy)**: Within identical portfolios, DueBot resolves cash **0.50 days faster in 10/10 seeds ($95\%\text{ CI}: [-0.57\text{d}, -0.43\text{d}]$, $p < 0.0001$)**. Mechanically, this stems from an adaptive 3-day nudge interval vs Naive's 7-day loop. Crucially, DueBot's `can_contact()` policy gate (`MAX_CONTACTS_PER_WEEK = 3` + 3-touch sequence cap) makes this tighter cadence safe: DueBot runs a faster interval yet sends **61.5% fewer total touches (21.5 vs 55.6)** — achieving the non-obvious outcome of being simultaneously faster and quieter.
 
 ---
 

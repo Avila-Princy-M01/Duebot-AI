@@ -114,7 +114,7 @@ Reproducible via `python scripts/run_eval.py` and `python scripts/run_multi_seed
 1. **100% Dispute Defect Protection (0.0 vs 13.4 spam touches)**: In B2B collections, dunning a disputed invoice is a critical compliance and customer-relationship defect. DueBot's `can_contact()` policy gate unconditionally halts outreach (**0.0 touches across 100% of runs**), eliminating the 5.3 to 13.4 harassment touches that a blind cadence delivers across all contact budgets.
 2. **46% to 61% Message Reduction Across All Budgets**: DueBot achieves maximum recovery while sending **61.5% fewer messages** under default cadence ($-34.1 \pm 9.8$ touches, $p < 0.0001$). Even when Naive is restricted to the exact same 3-touch budget, DueBot still sends **46.4% fewer messages** (21.5 vs 40.1 touches) by selectively abstaining on organic self-cures and pausing during active promise windows.
 3. **Statistically Verified Recovery Parity (79.3% vs 78.5%)**: Paired lift $+0.77\% \pm 1.15\%$ ($95\%\text{ CI}: [-0.05\%, +1.60\%]$, $p > 0.05$), confirming true recovery parity on cooperative buyers without inflated claims.
-4. **Statistically Significant Speed Advantage**: Paired resolution acceleration of **$-0.50 \pm 0.10\text{ days}$ ($95\%\text{ CI}: [-0.57\text{d}, -0.43\text{d}]$, $p < 0.0001$, 10/10 seeds)** from DueBot's 3-day adaptive interval.
+4. **Faster and Quieter (Tighter Cadence Bounded by Policy)**: Paired resolution acceleration of **$-0.50 \pm 0.10\text{ days}$ ($95\%\text{ CI}: [-0.57\text{d}, -0.43\text{d}]$, $p < 0.0001$, 10/10 seeds)** from an adaptive 3-day interval made safe by DueBot's `can_contact()` weekly and sequence caps — resolving cash faster while sending 61.5% fewer messages.
 
 ---
 
