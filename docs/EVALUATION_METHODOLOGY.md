@@ -54,7 +54,9 @@ Because all 3 strategies run on the **exact same invoice portfolios within each 
 | **Recovery Rate Lift** | **+0.77%** | ± 1.15% | `[-0.05%, +1.60%]` | 5/10 seeds ≥ naive | **Parity ($p > 0.05$)**: Confirms true recovery cohort parity |
 | **Resolution Speed** | **-0.50 days** | ± 0.10 days | `[-0.57d, -0.43d]` | **10/10 seeds ≤ naive** | **Faster ($p < 0.0001$)**: Consistent 12-hour resolution acceleration |
 | **Contact Reduction** | **-34.1 touches** | ± 9.8 touches | `[-41.1, -27.1]` | **10/10 seeds < naive** | **61.5% fewer messages ($p < 0.0001$)** |
-| **Capital Efficiency Lift** | **+₹ 2,38,647** | ± ₹ 1,05,387 | `[+₹ 1.63L, +₹ 3.14L]` | **10/10 seeds > naive** | **+170% capital efficiency ($p < 0.0001$)** |
+| *Derived Efficiency Lift* | *+₹ 2,38,647* | ± ₹ 1,05,387 | `[+₹ 1.63L, +₹ 3.14L]` | 10/10 seeds > naive | *Direct restatement of contact delta at parity recovery* |
+
+*(Note on Rigor: Capital efficiency in ₹/contact shares an identical recovered numerator across arms at recovery parity; it is a derived economic presentation of the contact reduction, not an independent statistical discovery).*
 
 ### Key Rigorous Conclusions:
 1. **100% Dispute Defect Protection (0.0 vs 13.4 spam touches)**: In B2B collections, dunning a disputed invoice is a critical compliance and customer-relationship failure. DueBot's deterministic `can_contact()` policy gate halts automated outreach immediately (**0.0 touches across 100% of runs**), eliminating the 5.3 to 13.4 harassment touches that a blind cadence delivers across all contact budgets.

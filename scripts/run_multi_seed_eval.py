@@ -318,9 +318,13 @@ def main() -> None:
         f"**{p_red.positive_count}/{n_total} seeds fewer** | **Yes (p < 0.0001)** |"
     )
     print(
-        f"| **Capital Efficiency Lift** | +₹ {p_eff.mean:,.0f} | ± ₹ {p_eff.std:,.0f} | "
+        f"| *Derived Efficiency Lift* | +₹ {p_eff.mean:,.0f} | ± ₹ {p_eff.std:,.0f} | "
         f"[+₹ {p_eff.ci95_low:,.0f}, +₹ {p_eff.ci95_high:,.0f}] | "
-        f"**{p_eff.positive_count}/{n_total} seeds > naive** | **Yes (p < 0.0001)** |"
+        f"{p_eff.positive_count}/{n_total} seeds > naive | *(Derived contact restatement)* |"
+    )
+    print(
+        "\n*(Note: Capital efficiency in ₹/contact is a derived algebraic restatement of\n"
+        "  the contact reduction at recovery parity, not an independent empirical effect)*"
     )
 
     print("\n### 3. Contact Budget Sensitivity Sweep (Constrained Naive Budgets)")
