@@ -5,13 +5,11 @@ export default async function MetricsPage() {
   const payload = await listBaselines();
   const duebotRow = payload.data.find((r) => r.strategy.toLowerCase().includes("duebot"));
   const naiveRow = payload.data.find((r) => r.strategy.toLowerCase().includes("naive"));
-  const noAgentRow = payload.data.find(
-    (r) => r.strategy.toLowerCase().includes("no_agent") || r.strategy.toLowerCase().includes("none")
-  );
+  const noAgentRow = payload.data.find((r) => r.strategy.toLowerCase().includes("no_agent"));
 
   const contactReductionPct =
     duebotRow && naiveRow && naiveRow.total_contacts_sent > 0
-      ? ((1 - duebotRow.total_contacts_sent / naiveRow.total_contacts_sent) * 100).toFixed(1)
+      ? (1 - duebotRow.total_contacts_sent / naiveRow.total_contacts_sent) * 100
       : null;
 
   const duebotRate =
@@ -25,7 +23,7 @@ export default async function MetricsPage() {
       : null;
 
   const recoveryLift =
-    duebotRate !== null && noAgentRate !== null ? (duebotRate - noAgentRate).toFixed(1) : null;
+    duebotRate !== null && noAgentRate !== null ? duebotRate - noAgentRate : null;
 
   return (
     <div className="space-y-6">
@@ -33,18 +31,35 @@ export default async function MetricsPage() {
         <div>
           <h1 className="text-2xl font-extrabold tracking-tight text-white">Strategy Baseline Performance</h1>
           <p className="text-xs text-slate-400">
-            Three-way strategy comparison on held-out test split (live run). For full 10-seed paired treatment effects across 710 invoices (61.5% fewer messages, +4.9% recovery, 0 dispute spam), see <code className="text-slate-300">docs/EVALUATION_METHODOLOGY.md</code>.
+            Three-way strategy comparison on held-out test split (live run). For multi-seed paired treatment effects, sensitivity sweeps, and operating boundary analysis across 710 invoices, see <code className="text-slate-300">docs/EVALUATION_METHODOLOGY.md</code>.
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {recoveryLift !== null && parseFloat(recoveryLift) > 0 && (
-            <span className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-bold text-emerald-400">
-              +{recoveryLift}% Recovery vs No-Agent (live split)
+          {recoveryLift !== null && (
+            <span
+              className={`rounded-xl border px-3 py-1.5 text-xs font-bold ${
+                recoveryLift > 0
+                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+                  : recoveryLift < 0
+                  ? "border-rose-500/30 bg-rose-500/10 text-rose-400"
+                  : "border-slate-700 bg-slate-800/50 text-slate-300"
+              }`}
+            >
+              {recoveryLift > 0 ? `+${recoveryLift.toFixed(1)}%` : `${recoveryLift.toFixed(1)}%`} Recovery vs No-Agent (live split)
             </span>
           )}
           {contactReductionPct !== null && (
-            <span className="rounded-xl border border-sky-500/30 bg-sky-500/10 px-3 py-1.5 text-xs font-bold text-sky-400">
-              -{contactReductionPct}% Messages (live split)
+            <span
+              className={`rounded-xl border px-3 py-1.5 text-xs font-bold ${
+                contactReductionPct > 0
+                  ? "border-sky-500/30 bg-sky-500/10 text-sky-400"
+                  : "border-slate-700 bg-slate-800/50 text-slate-300"
+              }`}
+            >
+              {contactReductionPct > 0
+                ? `-${contactReductionPct.toFixed(1)}%`
+                : `+${Math.abs(contactReductionPct).toFixed(1)}%`}{" "}
+              Messages (live split)
             </span>
           )}
         </div>
