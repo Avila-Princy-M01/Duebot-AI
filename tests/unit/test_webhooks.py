@@ -1,7 +1,10 @@
-"""Unit tests for Razorpay webhook handling."""
+"""Unit tests for Razorpay webhook signature verification and event processing."""
 
 from __future__ import annotations
 
+import hashlib
+import hmac
+import json
 from datetime import date
 from decimal import Decimal
 
@@ -15,19 +18,30 @@ from backend.models.merchant import Merchant
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+TEST_SECRET = "test_webhook_secret"
+
+
+def _sign_payload(payload_bytes: bytes, secret: str = TEST_SECRET) -> str:
+    """Generate authentic Razorpay HMAC-SHA256 signature."""
+    return hmac.new(
+        key=secret.encode("utf-8"),
+        msg=payload_bytes,
+        digestmod=hashlib.sha256,
+    ).hexdigest()
+
 
 @pytest.mark.asyncio
-async def test_webhook_payment_link_paid_transitions_invoice(
+async def test_webhook_payment_link_paid_valid_signature(
     session_factory: async_sessionmaker[AsyncSession],
 ) -> None:
-    """Razorpay payment_link.paid webhook transitions invoice to RECOVERED."""
+    """Authentic payment_link.paid with valid signature marks invoice RECOVERED."""
     app = create_app()
 
-    async def _override_get_session():
+    async def _override_get_db():
         async with session_factory() as s:
             yield s
 
-    app.dependency_overrides[get_db] = _override_get_session
+    app.dependency_overrides[get_db] = _override_get_db
 
     async with session_factory() as session:
         merchant = Merchant(
@@ -76,19 +90,32 @@ async def test_webhook_payment_link_paid_transitions_invoice(
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as client:
-        # Standard Razorpay payload format
         payload = {
+            "entity": "event",
+            "account_id": "acc_test",
             "event": "payment_link.paid",
+            "contains": ["payment_link"],
             "payload": {
                 "payment_link": {
                     "entity": {
                         "id": "plink_test_12345",
+                        "amount": 2950000,
                         "status": "paid",
                     }
                 }
             },
         }
-        res = await client.post("/api/webhooks/razorpay", json=payload)
+        body_bytes = json.dumps(payload).encode("utf-8")
+        signature = _sign_payload(body_bytes)
+
+        res = await client.post(
+            "/api/webhooks/razorpay",
+            content=body_bytes,
+            headers={
+                "Content-Type": "application/json",
+                "X-Razorpay-Signature": signature,
+            },
+        )
         assert res.status_code == 200
         data = res.json()
         assert data["status"] == "ok"
@@ -100,3 +127,90 @@ async def test_webhook_payment_link_paid_transitions_invoice(
         assert refreshed is not None
         assert refreshed.state == "recovered"
         assert refreshed.amount_paid == Decimal("29500.00")
+
+
+@pytest.mark.asyncio
+async def test_webhook_invalid_signature_rejected(
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    """Forged or missing webhook signature must be rejected with 401 Unauthorized."""
+    app = create_app()
+
+    async def _override_get_db():
+        async with session_factory() as s:
+            yield s
+
+    app.dependency_overrides[get_db] = _override_get_db
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        payload = {
+            "event": "payment_link.paid",
+            "payload": {"payment_link": {"entity": {"id": "plink_fake"}}},
+        }
+        body_bytes = json.dumps(payload).encode("utf-8")
+
+        # 1. Missing signature header
+        res_no_sig = await client.post(
+            "/api/webhooks/razorpay",
+            content=body_bytes,
+            headers={"Content-Type": "application/json"},
+        )
+        assert res_no_sig.status_code == 401
+
+        # 2. Tampered signature
+        res_bad_sig = await client.post(
+            "/api/webhooks/razorpay",
+            content=body_bytes,
+            headers={
+                "Content-Type": "application/json",
+                "X-Razorpay-Signature": "invalid_tampered_signature_hex",
+            },
+        )
+        assert res_bad_sig.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_webhook_non_settlement_event_ignored(
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    """Non-settlement events (e.g. payment_link.cancelled) do NOT trigger state transitions."""
+    app = create_app()
+
+    async def _override_get_db():
+        async with session_factory() as s:
+            yield s
+
+    app.dependency_overrides[get_db] = _override_get_db
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        payload = {
+            "entity": "event",
+            "event": "payment_link.cancelled",
+            "payload": {
+                "payment_link": {
+                    "entity": {
+                        "id": "plink_test_12345",
+                        "status": "cancelled",
+                    }
+                }
+            },
+        }
+        body_bytes = json.dumps(payload).encode("utf-8")
+        signature = _sign_payload(body_bytes)
+
+        res = await client.post(
+            "/api/webhooks/razorpay",
+            content=body_bytes,
+            headers={
+                "Content-Type": "application/json",
+                "X-Razorpay-Signature": signature,
+            },
+        )
+        assert res.status_code == 200
+        data = res.json()
+        assert data["status"] == "ignored"
+        assert data["reason"] == "non_settlement_event"

@@ -1,7 +1,8 @@
-"""Razorpay webhook handlers for payment link status updates."""
+"""Razorpay webhook handler with HMAC-SHA256 signature verification."""
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 import structlog
@@ -9,12 +10,18 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.config import get_settings
 from backend.dependencies import get_db
+from backend.integrations.razorpay import verify_webhook_signature
 from backend.models.invoice import Invoice
 from backend.tasks.payment import confirm_payment
 
 logger = structlog.get_logger("duebot.webhooks")
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
+
+ALLOWED_SETTLEMENT_EVENTS = frozenset(
+    {"payment_link.paid", "payment.captured", "order.paid"}
+)
 
 
 @router.post("/razorpay", status_code=status.HTTP_200_OK)
@@ -23,71 +30,101 @@ async def handle_razorpay_webhook(
     session: AsyncSession = Depends(get_db),
     x_razorpay_signature: str | None = Header(default=None),
 ) -> dict[str, Any]:
-    """Process incoming Razorpay webhook events (e.g. payment_link.paid).
+    """Process incoming Razorpay webhook events with HMAC-SHA256 verification.
 
-    Finds the matched invoice by payment_link_id or invoice_id/number,
-    and applies the PAYMENT_CONFIRMED lifecycle transition.
+    1. Enforces cryptographic signature verification on the raw request body.
+    2. Filters specifically for settlement events (payment_link.paid / payment.captured).
+    3. Locates the invoice via standard nested Razorpay payload entities.
+    4. Applies the deterministic PAYMENT_CONFIRMED lifecycle transition.
     """
+    settings = get_settings()
+    raw_body = await request.body()
+
+    # 1. HMAC-SHA256 Signature Verification
+    secret = settings.razorpay_webhook_secret or "test_webhook_secret"
+    if not x_razorpay_signature or not verify_webhook_signature(
+        raw_body, x_razorpay_signature, secret
+    ):
+        logger.warning(
+            "webhook_signature_verification_failed",
+            signature_present=bool(x_razorpay_signature),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or missing X-Razorpay-Signature header",
+        )
+
+    # 2. JSON Payload & Event Parsing
     try:
-        body: dict[str, Any] = await request.json()
+        body: dict[str, Any] = json.loads(raw_body.decode("utf-8"))
     except Exception as exc:
-        logger.warning("invalid_webhook_payload", error=str(exc))
+        logger.warning("invalid_webhook_json", error=str(exc))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid JSON payload",
+            detail="Invalid JSON body",
         ) from exc
 
     event = body.get("event")
     logger.info(
         "webhook_received",
         webhook_event=event,
-        signature_present=bool(x_razorpay_signature),
+        verified=True,
     )
 
+    # 3. Filter for settlement events only
+    if event not in ALLOWED_SETTLEMENT_EVENTS:
+        logger.info(
+            "webhook_event_ignored_non_settlement",
+            webhook_event=event,
+        )
+        return {
+            "status": "ignored",
+            "event": event,
+            "reason": "non_settlement_event",
+        }
+
+    # 4. Extract target invoice from authentic Razorpay payload structures
     invoice: Invoice | None = None
-
-    # 1. Look up by direct invoice_id or payment_link_id in body
-    if "invoice_id" in body:
-        inv_id = str(body["invoice_id"])
-        res = await session.execute(select(Invoice).where(Invoice.invoice_id == inv_id))
-        invoice = res.scalar_one_or_none()
-
-    elif "payment_link_id" in body:
-        plink_id = str(body["payment_link_id"])
-        res = await session.execute(
-            select(Invoice).where(Invoice.payment_link_id == plink_id)
-        )
-        invoice = res.scalar_one_or_none()
-
-    # 2. Look up by standard nested Razorpay webhook structure
-    # e.g., payload.payment_link.entity.id or payload.payment.entity.notes.invoice_id
-    elif "payload" in body and isinstance(body["payload"], dict):
-        pl_entity = (
-            body["payload"].get("payment_link", {}).get("entity", {})
-            if isinstance(body["payload"].get("payment_link"), dict)
-            else {}
-        )
-        plink_raw = pl_entity.get("id")
-        if plink_raw is not None:
-            plink_id = str(plink_raw)
-            res = await session.execute(
-                select(Invoice).where(Invoice.payment_link_id == plink_id)
-            )
-            invoice = res.scalar_one_or_none()
-
-        if not invoice:
-            notes = pl_entity.get("notes", {})
-            if isinstance(notes, dict) and "invoice_id" in notes:
+    payload = body.get("payload")
+    if isinstance(payload, dict):
+        # A. Check payment_link entity
+        pl_entity = payload.get("payment_link", {}).get("entity")
+        if isinstance(pl_entity, dict):
+            plink_id = pl_entity.get("id")
+            if plink_id:
                 res = await session.execute(
-                    select(Invoice).where(Invoice.invoice_id == str(notes["invoice_id"]))
+                    select(Invoice).where(Invoice.payment_link_id == str(plink_id))
                 )
                 invoice = res.scalar_one_or_none()
 
-    if invoice is None:
-        logger.warning("webhook_invoice_not_found", event=event)
-        return {"status": "ignored", "reason": "invoice_not_found"}
+            if not invoice:
+                notes = pl_entity.get("notes")
+                if isinstance(notes, dict) and "invoice_id" in notes:
+                    res = await session.execute(
+                        select(Invoice).where(Invoice.invoice_id == str(notes["invoice_id"]))
+                    )
+                    invoice = res.scalar_one_or_none()
 
-    # Apply idempotent payment confirmation
+        # B. Check payment entity
+        if not invoice:
+            pay_entity = payload.get("payment", {}).get("entity")
+            if isinstance(pay_entity, dict):
+                notes = pay_entity.get("notes")
+                if isinstance(notes, dict) and "invoice_id" in notes:
+                    res = await session.execute(
+                        select(Invoice).where(Invoice.invoice_id == str(notes["invoice_id"]))
+                    )
+                    invoice = res.scalar_one_or_none()
+
+    if invoice is None:
+        logger.warning("webhook_invoice_not_found", webhook_event=event)
+        return {
+            "status": "ignored",
+            "event": event,
+            "reason": "invoice_not_found",
+        }
+
+    # 5. Apply deterministic state machine transition
     updated = await confirm_payment(session, invoice)
     await session.commit()
     logger.info(
@@ -97,6 +134,7 @@ async def handle_razorpay_webhook(
     )
     return {
         "status": "ok",
+        "event": event,
         "invoice_id": updated.invoice_id,
         "state": updated.state,
     }

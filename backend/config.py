@@ -36,6 +36,7 @@ class Settings(BaseSettings):
 
     razorpay_key_id: str = Field(default="")
     razorpay_key_secret: str = Field(default="")
+    razorpay_webhook_secret: str = Field(default="")
 
     whatsapp_mode: str = Field(default="simulated")
     whatsapp_api_token: str = Field(default="")

@@ -1,7 +1,5 @@
-"""Razorpay Payment Links wrapper (test mode) with a mock fallback."""
-
-from __future__ import annotations
-
+import hashlib
+import hmac
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any
@@ -15,6 +13,25 @@ from backend.logging_util import mask_amount
 logger = structlog.get_logger("duebot.razorpay")
 
 
+def verify_webhook_signature(
+    raw_body: bytes,
+    signature: str,
+    secret: str,
+) -> bool:
+    """Verify HMAC SHA-256 signature from X-Razorpay-Signature header.
+
+    Matches razorpay.utility.Utility.verify_webhook_signature standard.
+    """
+    if not signature or not secret:
+        return False
+    expected_signature = hmac.new(
+        key=secret.encode("utf-8"),
+        msg=raw_body,
+        digestmod=hashlib.sha256,
+    ).hexdigest()
+    return hmac.compare_digest(expected_signature, signature)
+
+
 @dataclass(frozen=True, slots=True)
 class PaymentLinkResult:
     """Created (or mocked) Payment Link."""
@@ -24,7 +41,7 @@ class PaymentLinkResult:
 
 
 class RazorpayClient:
-    """Create Payment Links. Never captures or auto-debits."""
+    """Create Payment Links and verify webhook signatures. Never captures or auto-debits."""
 
     def __init__(self, settings: Settings | None = None) -> None:
         self._settings = settings or get_settings()
@@ -40,6 +57,13 @@ class RazorpayClient:
     def uses_mock(self) -> bool:
         """True when credentials are absent and links are synthetic."""
         return self._sdk is None
+
+    def verify_signature(self, raw_body: bytes, signature: str | None) -> bool:
+        """Verify webhook signature against configured secret."""
+        if not signature:
+            return False
+        secret = self._settings.razorpay_webhook_secret or "test_webhook_secret"
+        return verify_webhook_signature(raw_body, signature, secret)
 
     def create_payment_link(
         self,
