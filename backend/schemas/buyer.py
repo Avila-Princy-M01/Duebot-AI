@@ -43,6 +43,9 @@ class BuyerInvoiceSummary(BaseModel):
     invoice_id: str
     invoice_number: str
     total_amount: Decimal
+    amount_paid: Decimal
+    outstanding_amount: Decimal
+    due_date: date
     status: str
     state: str
     days_overdue: int

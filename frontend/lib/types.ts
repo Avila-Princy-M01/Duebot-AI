@@ -11,15 +11,25 @@ export interface InvoiceRow {
   invoice_id: string;
   merchant_id: string;
   buyer_id: string;
+  buyer_company_name: string;
+  buyer_contact_name: string;
+  buyer_reliability_tier: string;
+  buyer_on_time_payment_rate: number;
   invoice_number: string;
   issue_date: string;
   due_date: string;
+  paid_date: string | null;
   total_amount: string;
   amount_paid: string;
+  /** total_amount - amount_paid. The balance a collections agent chases. */
+  outstanding_amount: string;
   currency: string;
   status: string;
   state: string;
   days_overdue: number;
+  /** Days between due_date and paid_date. days_overdue resets to 0 on
+   *  settlement, so this is the only record that a paid invoice was paid late. */
+  days_late: number;
   risk_tier: string;
   opted_out: boolean;
   split: string;
@@ -65,6 +75,7 @@ export interface InvoiceDetail extends InvoiceRow {
     promised_amount: string | null;
     confidence: number;
     status: string;
+    resolved_at: string | null;
   }>;
   audit: AuditRow[];
 }

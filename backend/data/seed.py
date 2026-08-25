@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,6 +20,7 @@ from backend.models.buyer import Buyer
 from backend.models.interaction import Interaction
 from backend.models.invoice import Invoice
 from backend.models.merchant import Merchant
+from backend.models.promise import Promise
 
 logger = structlog.get_logger("duebot.seed")
 
@@ -54,7 +55,10 @@ async def seed_from_generator(
 
     from sqlalchemy import delete
 
-    # Clear existing synthetic rows for an idempotent seed operation
+    # Clear existing synthetic rows for an idempotent seed operation.
+    # Promise must be deleted first: it holds foreign keys into both
+    # interactions and invoices, so removing those first would violate them.
+    await session.execute(delete(Promise))
     await session.execute(delete(AuditLog))
     await session.execute(delete(Interaction))
     await session.execute(delete(Invoice))
@@ -194,6 +198,9 @@ async def seed_from_generator(
 
     # Synthetic message timestamps directly from generator timeline
     attempt_by_invoice: dict[str, int] = {}
+    # Latest promise-bearing inbound reply per invoice, so each Promise row can
+    # cite the exact interaction its date was extracted from.
+    promise_sources: dict[str, tuple[UUID, str]] = {}
     for msg in gen.messages:
         if msg.direction == "outbound":
             attempt_by_invoice[msg.invoice_id] = attempt_by_invoice.get(msg.invoice_id, 0) + 1
@@ -203,9 +210,13 @@ async def seed_from_generator(
 
         msg_sent_at = _dt(msg.timestamp)
 
+        interaction_id = uuid4()
+        if msg.direction == "inbound" and msg.intent_label == "promise" and msg.promised_date:
+            promise_sources[msg.invoice_id] = (interaction_id, msg.promised_date)
+
         session.add(
             Interaction(
-                id=uuid4(),
+                id=interaction_id,
                 invoice_id=msg.invoice_id,
                 buyer_id=msg.buyer_id,
                 channel=msg.channel,
@@ -220,11 +231,53 @@ async def seed_from_generator(
         )
 
     await session.flush()
+
+    # Promise-to-pay rows, derived from the promise replies inserted above.
+    # Only invoices with a tracked outcome qualify: the status CHECK excludes
+    # "none", and an ambiguous reply must never yield a promise -- abstaining
+    # there is the behaviour the reply-parser eval measures.
+    invoice_by_id = {inv.invoice_id: inv for inv in gen.invoices}
+    promises_created = 0
+    for invoice_id, (source_id, promised_date) in promise_sources.items():
+        gen_inv = invoice_by_id.get(invoice_id)
+        if gen_inv is None or gen_inv.promise_outcome not in ("pending", "kept", "broken"):
+            continue
+
+        # Resolved on the date the outcome became knowable: payment arrival for a
+        # kept promise (or promised date fallback), the promised date itself for one that lapsed.
+        # A pending promise is still inside its grace window and stays unresolved.
+        resolved_at: datetime | None = None
+        if gen_inv.promise_outcome == "kept":
+            kept_date = gen_inv.paid_date or promised_date
+            resolved_at = _dt(f"{kept_date}T12:00:00")
+        elif gen_inv.promise_outcome == "broken":
+            resolved_at = _dt(f"{promised_date}T12:00:00")
+
+        # The synthetic reply parser extracts a promised date, not a specific amount.
+        # Storing None honestly reflects what was extracted from the reply text.
+        session.add(
+            Promise(
+                id=uuid4(),
+                invoice_id=invoice_id,
+                source_interaction_id=source_id,
+                promised_date=date.fromisoformat(promised_date),
+                promised_amount=None,
+                # Matches the inbound interaction confidence set above and
+                # satisfies the CHECK (confidence >= 0.7) auto-log threshold.
+                confidence=0.9,
+                status=gen_inv.promise_outcome,
+                resolved_at=resolved_at,
+            )
+        )
+        promises_created += 1
+
+    await session.flush()
     return {
         "merchants": len(gen.merchants),
         "buyers": len(gen.buyers),
         "invoices": len(gen.invoices),
         "messages": len(gen.messages),
+        "promises": promises_created,
     }
 
 

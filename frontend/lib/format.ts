@@ -58,3 +58,18 @@ export function formatINR(val: number | string | null | undefined): string {
   if (isNaN(num)) return "₹0";
   return `₹${num.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
 }
+
+/**
+ * Short date without the year, for dense table cells: "21 Aug".
+ */
+export function formatDateShort(dateStr: string | null | undefined): string {
+  if (!dateStr) return "—";
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
+
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "2-digit",
+    month: "short",
+    timeZone: "UTC",
+  }).format(d);
+}

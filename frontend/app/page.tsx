@@ -2,6 +2,7 @@ import { AgingBuckets } from "../components/dashboard/AgingBuckets";
 import { MetricCard } from "../components/dashboard/MetricCards";
 import { SeedButton } from "../components/ui/SeedButton";
 import { listInvoices } from "../lib/api";
+import { formatINR } from "../lib/format";
 import type { InvoiceRow } from "../lib/types";
 
 export default async function HomePage() {
@@ -13,7 +14,10 @@ export default async function HomePage() {
     error = exc instanceof Error ? exc.message : "API unavailable";
   }
   const overdue = invoices.filter((row) => row.status === "overdue" || row.state === "overdue");
-  const atRisk = overdue.reduce((sum, row) => sum + Number(row.total_amount) - Number(row.amount_paid), 0);
+  const atRisk = overdue.reduce(
+    (sum, row) => sum + Number(row.outstanding_amount ?? Math.max(0, Number(row.total_amount) - Number(row.amount_paid))),
+    0
+  );
 
   return (
     <div className="space-y-8">
@@ -67,7 +71,7 @@ export default async function HomePage() {
         />
         <MetricCard
           label="₹ Amount At Risk"
-          value={`₹${atRisk.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`}
+          value={formatINR(atRisk)}
           type="risk"
           hint="Total overdue receivables balance"
         />

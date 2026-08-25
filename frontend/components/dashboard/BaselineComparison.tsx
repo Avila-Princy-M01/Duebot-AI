@@ -1,3 +1,4 @@
+import { formatINR } from "../../lib/format";
 import type { BaselineRow } from "../../lib/types";
 
 interface BaselineComparisonProps {
@@ -72,12 +73,12 @@ export function BaselineComparison({ rows }: BaselineComparisonProps) {
                 </div>
                 <div className="flex items-center justify-between text-slate-400">
                   <span>Total Recovered:</span>
-                  <span className="font-mono font-bold text-emerald-400">₹{recValue.toLocaleString("en-IN")}</span>
+                  <span className="font-mono font-bold text-emerald-400">{formatINR(recValue)}</span>
                 </div>
                 <div className="flex items-center justify-between text-slate-400 pt-1">
                   <span className="font-semibold text-slate-300">Capital Efficiency:</span>
                   <span className="font-mono font-extrabold text-sky-400">
-                    {perContact > 0 ? `₹${Math.round(perContact).toLocaleString("en-IN")} / contact` : "N/A"}
+                    {perContact > 0 ? `${formatINR(Math.round(perContact))} / contact` : "N/A"}
                   </span>
                 </div>
               </div>
@@ -115,7 +116,7 @@ export function BaselineComparison({ rows }: BaselineComparisonProps) {
                   </td>
                   <td className="px-4 py-3.5 text-slate-300">{row.total_contacts_sent}</td>
                   <td className="px-4 py-3.5 font-bold text-emerald-400">
-                    ₹{Number(row.recovered_value).toLocaleString("en-IN")}
+                    {formatINR(row.recovered_value)}
                   </td>
                 </tr>
               ))}

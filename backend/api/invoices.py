@@ -68,8 +68,10 @@ async def list_invoices(
         stmt = stmt.where(Invoice.split == split)
         count_stmt = count_stmt.where(Invoice.split == split)
     total = await session.scalar(count_stmt)
-    rows = await session.execute(stmt.offset(offset).limit(limit))
-    data = [InvoiceOut.model_validate(inv) for inv in rows.scalars()]
+    rows = await session.execute(
+        stmt.options(selectinload(Invoice.buyer)).offset(offset).limit(limit)
+    )
+    data = [InvoiceOut.from_invoice(inv) for inv in rows.scalars()]
     return SuccessEnvelope(data=data, meta=Meta(total_count=int(total or 0)))
 
 
@@ -83,6 +85,7 @@ async def get_invoice(
         select(Invoice)
         .where(Invoice.invoice_id == invoice_id)
         .options(
+            selectinload(Invoice.buyer),
             selectinload(Invoice.interactions),
             selectinload(Invoice.promises),
             selectinload(Invoice.audit_entries),
@@ -93,7 +96,8 @@ async def get_invoice(
         raise NotFoundError(f"invoice {invoice_id} not found")
     invoice.interactions.sort(key=lambda row: row.sent_at)
     invoice.audit_entries.sort(key=lambda row: row.occurred_at)
-    base = InvoiceOut.model_validate(invoice)
+    invoice.promises.sort(key=lambda row: row.promised_date)
+    base = InvoiceOut.from_invoice(invoice)
     return SuccessEnvelope(
         data=InvoiceDetail(
             **base.model_dump(),

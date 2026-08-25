@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { BuyerVoiceBriefing } from "../../../components/buyers/BuyerVoiceBriefing";
 import { getBuyer } from "../../../lib/api";
+import { formatDateShort, formatINR } from "../../../lib/format";
 
 interface BuyerDetailPageProps {
   params: { id: string };
@@ -39,9 +40,21 @@ export default async function BuyerDetailPage({ params }: BuyerDetailPageProps) 
                   <a className="font-bold text-sky-400 hover:underline" href={`/invoices/${inv.invoice_id}`}>
                     {inv.invoice_number}
                   </a>
-                  <span className="text-slate-300">₹{Number(inv.total_amount).toLocaleString("en-IN")}</span>
-                  <span className="uppercase font-semibold text-slate-400">{inv.state}</span>
-                  <span className="text-amber-400 font-medium">{inv.days_overdue} days overdue</span>
+                  <span className="text-right">
+                    <span className="block font-mono text-slate-200">{formatINR(inv.total_amount)}</span>
+                    {Number(inv.outstanding_amount) > 0 ? (
+                      <span className="block font-mono text-[10px] font-bold text-amber-300">
+                        {formatINR(inv.outstanding_amount)} outstanding
+                      </span>
+                    ) : (
+                      <span className="block text-[10px] font-bold uppercase text-emerald-400">Settled</span>
+                    )}
+                  </span>
+                  <span className="text-slate-400">Due {formatDateShort(inv.due_date)}</span>
+                  <span className="font-semibold uppercase text-slate-400">{inv.state.replace(/_/g, " ")}</span>
+                  <span className="font-medium text-amber-400">
+                    {inv.days_overdue > 0 ? `${inv.days_overdue} days overdue` : ""}
+                  </span>
                 </li>
               ))
             : null}

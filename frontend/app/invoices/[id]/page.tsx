@@ -2,8 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { notFound } from "next/navigation";
+import { EdgeCaseBadge, edgeCaseMeta } from "../../../components/invoices/EdgeCaseBadge";
 import { InvoiceTimeline } from "../../../components/invoices/InvoiceTimeline";
+import { PromiseList } from "../../../components/invoices/PromiseList";
 import { getInvoice, injectReply, previewNudge, triggerNudge } from "../../../lib/api";
+import { formatDate, formatINR } from "../../../lib/format";
 import type { InvoiceDetail, NudgePreview } from "../../../lib/types";
 
 interface InvoiceDetailPageProps {
@@ -44,21 +47,142 @@ export default function InvoiceDetailPage({ params }: InvoiceDetailPageProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between rounded-2xl border border-slate-800/80 bg-panel/70 p-6 backdrop-blur-md">
-        <div>
-          <h1 className="text-2xl font-extrabold text-white">{invoice.invoice_number}</h1>
-          <p className="mt-1 text-xs text-slate-400">
-            State: <span className="font-bold text-sky-400">{invoice.state}</span> · Risk:{" "}
-            <span className="font-bold text-amber-400">{invoice.risk_tier}</span> · {invoice.days_overdue} days overdue ·{" "}
-            <a href={`/buyers/${invoice.buyer_id}`} className="text-sky-400 font-semibold hover:underline">
-              🎙️ Buyer Brief →
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between rounded-2xl border border-slate-800/80 bg-panel/70 p-6 backdrop-blur-md">
+        <div className="space-y-1.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-2xl font-extrabold text-white">{invoice.invoice_number}</h1>
+            <EdgeCaseBadge edgeCase={invoice.edge_case} />
+          </div>
+          <p className="text-sm font-semibold text-slate-200">
+            <a href={`/buyers/${invoice.buyer_id}`} className="hover:underline">
+              {invoice.buyer_company_name}
+            </a>
+            <span className="mx-1.5 text-slate-600">|</span>
+            <span className="text-xs font-medium text-slate-400">{invoice.buyer_contact_name}</span>
+          </p>
+          <p className="text-xs text-slate-400">
+            State: <span className="font-bold text-sky-400">{invoice.state.replace(/_/g, " ")}</span>{" "}
+            | Risk: <span className="font-bold text-amber-400">{invoice.risk_tier}</span> |{" "}
+            {Number(invoice.outstanding_amount) === 0 && invoice.paid_date ? (
+              <span className="font-bold text-emerald-400">
+                Paid {formatDate(invoice.paid_date)}
+                {invoice.days_late > 0 ? ` (${invoice.days_late}d late)` : " (on time)"}
+              </span>
+            ) : invoice.days_overdue > 0 ? (
+              <span className="font-bold text-rose-400">{invoice.days_overdue} days overdue</span>
+            ) : (
+              <span className="text-slate-400">Not yet due</span>
+            )}{" "}
+            |{" "}
+            <a href={`/buyers/${invoice.buyer_id}`} className="font-semibold text-sky-400 hover:underline">
+              Buyer Brief
             </a>
           </p>
         </div>
-        <div className="font-mono text-2xl font-extrabold text-white">
-          ₹{Number(invoice.total_amount).toLocaleString("en-IN")}
+        <div className="text-right">
+          <div className="font-mono text-2xl font-extrabold text-white">
+            {formatINR(invoice.total_amount)}
+          </div>
+          {Number(invoice.outstanding_amount) > 0 ? (
+            <div className="mt-0.5 font-mono text-xs font-bold text-amber-300">
+              {formatINR(invoice.outstanding_amount)} outstanding
+            </div>
+          ) : (
+            <div className="mt-0.5 text-xs font-bold uppercase text-emerald-400">Settled</div>
+          )}
         </div>
       </div>
+
+      {invoice.edge_case && invoice.edge_case !== "none" ? (
+        <div className="rounded-2xl border border-violet-500/25 bg-violet-950/20 p-4">
+          <p className="text-[11px] font-extrabold uppercase tracking-wider text-violet-300">
+            Edge case under test: {edgeCaseMeta(invoice.edge_case).label}
+          </p>
+          <p className="mt-1 text-xs leading-relaxed text-slate-300">
+            {edgeCaseMeta(invoice.edge_case).title}
+          </p>
+        </div>
+      ) : null}
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <section className="rounded-2xl border border-slate-800/80 bg-panel/70 p-5 backdrop-blur-md">
+          <h3 className="mb-3 border-b border-slate-800 pb-2 text-sm font-bold text-white">
+            Amount Breakdown
+          </h3>
+          <dl className="space-y-2 text-xs">
+            <div className="flex justify-between">
+              <dt className="text-slate-400">Subtotal</dt>
+              <dd className="font-mono text-slate-200">{formatINR(invoice.subtotal_amount)}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-slate-400">GST @ {invoice.gst_rate}%</dt>
+              <dd className="font-mono text-slate-200">{formatINR(invoice.gst_amount)}</dd>
+            </div>
+            <div className="flex justify-between border-t border-slate-800 pt-2">
+              <dt className="font-bold text-white">Invoice Total</dt>
+              <dd className="font-mono font-bold text-white">{formatINR(invoice.total_amount)}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-slate-400">Received</dt>
+              <dd className="font-mono text-emerald-400">{formatINR(invoice.amount_paid)}</dd>
+            </div>
+            <div className="flex justify-between border-t border-slate-800 pt-2">
+              <dt className="font-bold text-amber-300">Outstanding</dt>
+              <dd className="font-mono font-bold text-amber-300">
+                {formatINR(invoice.outstanding_amount)}
+              </dd>
+            </div>
+          </dl>
+        </section>
+
+        <section className="rounded-2xl border border-slate-800/80 bg-panel/70 p-5 backdrop-blur-md">
+          <h3 className="mb-3 border-b border-slate-800 pb-2 text-sm font-bold text-white">
+            Terms and Dates
+          </h3>
+          <dl className="space-y-2 text-xs">
+            <div className="flex justify-between">
+              <dt className="text-slate-400">Issued</dt>
+              <dd className="text-slate-200">{formatDate(invoice.issue_date)}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-slate-400">Due</dt>
+              <dd className="font-semibold text-slate-200">{formatDate(invoice.due_date)}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-slate-400">Payment terms</dt>
+              <dd className="text-slate-200">Net {invoice.payment_terms_days} days</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-slate-400">Paid</dt>
+              <dd className="text-slate-200">
+                {invoice.paid_date ? formatDate(invoice.paid_date) : "Not paid"}
+              </dd>
+            </div>
+            <div className="flex justify-between border-t border-slate-800 pt-2">
+              <dt className="text-slate-400">Buyer reliability</dt>
+              <dd className="text-slate-200">
+                {invoice.buyer_reliability_tier.replace(/_/g, " ")}{" "}
+                <span className="text-slate-400">
+                  ({(invoice.buyer_on_time_payment_rate * 100).toFixed(0)}% on time)
+                </span>
+              </dd>
+            </div>
+            {invoice.payment_link_id ? (
+              <div className="flex justify-between">
+                <dt className="text-slate-400">Razorpay link</dt>
+                <dd className="font-mono text-[10px] text-sky-400">{invoice.payment_link_id}</dd>
+              </div>
+            ) : null}
+          </dl>
+        </section>
+      </div>
+
+      {invoice.notes ? (
+        <div className="rounded-2xl border border-slate-800/80 bg-panel/70 p-4 text-xs text-slate-300">
+          <span className="font-bold text-slate-400">Note: </span>
+          {invoice.notes}
+        </div>
+      ) : null}
 
       <div className="flex flex-wrap gap-3">
         <button
@@ -123,6 +247,8 @@ export default function InvoiceDetailPage({ params }: InvoiceDetailPageProps) {
           Submit Reply →
         </button>
       </div>
+
+      <PromiseList promises={invoice.promises} promiseOutcome={invoice.promise_outcome} />
 
       <InvoiceTimeline interactions={invoice.interactions} audit={invoice.audit} />
     </div>
