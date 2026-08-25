@@ -26,6 +26,41 @@ SEEDS = [42, 101, 202, 303, 404, 505, 606, 707, 808, 909]
 BUDGET_SWEEP = [3, 4, 6, 8, 12]
 
 
+def betainc_simpson(a: float, b: float, x: float, steps: int = 200) -> float:
+    """Numerical regularized incomplete beta function I_x(a, b)."""
+    if x <= 0.0:
+        return 0.0
+    if x >= 1.0:
+        return 1.0
+    ln_beta = math.lgamma(a) + math.lgamma(b) - math.lgamma(a + b)
+    h = x / steps
+    s = 0.0
+    for i in range(steps + 1):
+        t = i * h
+        if t <= 0.0 or t >= 1.0:
+            val = 0.0
+        else:
+            val = math.exp((a - 1.0) * math.log(t) + (b - 1.0) * math.log(1.0 - t) - ln_beta)
+        weight = 4 if i % 2 == 1 else (2 if (0 < i < steps) else 1)
+        s += weight * val
+    return min(max(s * h / 3.0, 0.0), 1.0)
+
+
+def student_t_p(t: float, df: int) -> float:
+    """Exact two-sided p-value for Student's t distribution with df degrees of freedom."""
+    if df <= 0:
+        return 1.0
+    x = df / (df + t * t)
+    return betainc_simpson(df / 2.0, 0.5, x)
+
+
+def format_p(p: float) -> str:
+    """Format p-value string dynamically."""
+    if p < 0.0001:
+        return "p < 0.0001"
+    return f"p = {p:.4f}"
+
+
 @dataclass(frozen=True, slots=True)
 class MetricStats:
     """Summary statistics for a sample distribution."""
@@ -48,6 +83,16 @@ class MetricStats:
         return sum(1 for x in self.values if x > 0)
 
     @property
+    def negative_count(self) -> int:
+        """Count of observations strictly less than zero."""
+        return sum(1 for x in self.values if x < 0)
+
+    @property
+    def zero_count(self) -> int:
+        """Count of observations equal to zero."""
+        return sum(1 for x in self.values if x == 0)
+
+    @property
     def non_positive_count(self) -> int:
         """Count of observations less than or equal to zero."""
         return sum(1 for x in self.values if x <= 0)
@@ -58,13 +103,19 @@ class MetricStats:
         return self.mean / self.sem if self.sem > 0 else 0.0
 
     @property
+    def t_p_value(self) -> float:
+        """Exact two-sided p-value for Student's t-test with df = len(values) - 1."""
+        df = len(self.values) - 1
+        return student_t_p(self.t_statistic, df)
+
+    @property
     def sign_test_p(self) -> float:
-        """Exact two-tailed Binomial Sign Test p-value under H0: p=0.5 (N = len(values))."""
-        n = len(self.values)
+        """Exact two-tailed Binomial Sign Test p-value under H0: p=0.5 (zeros dropped)."""
+        pos = self.positive_count
+        neg = self.negative_count
+        n = pos + neg
         if n == 0:
             return 1.0
-        pos = sum(1 for x in self.values if x > 0)
-        neg = sum(1 for x in self.values if x < 0)
         k = max(pos, neg)
         p_val = 2.0 * sum(math.comb(n, i) * (0.5**n) for i in range(k, n + 1))
         return min(p_val, 1.0)
@@ -401,16 +452,16 @@ def main() -> None:
     p_none_days = paired["vs_none_days"]
 
     res_none_rec = (
-        f"t = {p_none_rec.t_statistic:+.2f} (p < 0.01), "
-        f"sign test p = {p_none_rec.sign_test_p:.4f}"
+        f"t = {p_none_rec.t_statistic:+.2f} ({format_p(p_none_rec.t_p_value)}), "
+        f"sign test {format_p(p_none_rec.sign_test_p)}"
     )
     res_none_amt = (
-        f"t = {p_none_amt.t_statistic:+.2f} (p < 0.01), "
-        f"sign test p = {p_none_amt.sign_test_p:.4f}"
+        f"t = {p_none_amt.t_statistic:+.2f} ({format_p(p_none_amt.t_p_value)}), "
+        f"sign test {format_p(p_none_amt.sign_test_p)}"
     )
     res_none_days = (
-        f"t = {p_none_days.t_statistic:+.2f} (p = 0.16), "
-        f"sign test p = {p_none_days.sign_test_p:.4f}"
+        f"t = {p_none_days.t_statistic:+.2f} ({format_p(p_none_days.t_p_value)}), "
+        f"sign test {format_p(p_none_days.sign_test_p)}"
     )
 
     print(
@@ -445,18 +496,21 @@ def main() -> None:
     p_red = paired["vs_naive_contact_red_pct"]
     p_eff = paired["vs_naive_efficiency"]
 
-    res_rec = f"t = {p_rec.t_statistic:+.2f} (p = 0.063, CI includes 0)"
+    res_rec = (
+        f"t = {p_rec.t_statistic:+.2f} ({format_p(p_rec.t_p_value)}, CI crosses 0), "
+        f"sign {format_p(p_rec.sign_test_p)}"
+    )
     res_days = (
-        f"Faster: t = {p_days.t_statistic:+.2f} (p < 0.001), "
-        f"sign p = {p_days.sign_test_p:.4f}"
+        f"Faster: t = {p_days.t_statistic:+.2f} ({format_p(p_days.t_p_value)}), "
+        f"sign {format_p(p_days.sign_test_p)}"
     )
     res_cnt = (
-        f"Fewer: t = {p_cnt.t_statistic:+.2f} (p < 0.001), "
-        f"sign p = {p_cnt.sign_test_p:.4f}"
+        f"Fewer: t = {p_cnt.t_statistic:+.2f} ({format_p(p_cnt.t_p_value)}), "
+        f"sign {format_p(p_cnt.sign_test_p)}"
     )
     res_red = (
-        f"61.5% fewer: t = {p_red.t_statistic:+.2f} (p < 0.001), "
-        f"sign p = {p_red.sign_test_p:.4f}"
+        f"61.5% fewer: t = {p_red.t_statistic:+.2f} ({format_p(p_red.t_p_value)}), "
+        f"sign {format_p(p_red.sign_test_p)}"
     )
 
     print(
@@ -560,8 +614,8 @@ def main() -> None:
         f"   DueBot recovers {p_none_rec.mean:+.2f}% ± {p_none_rec.std:.2f}% more cash than "
         f"self-cure alone\n"
         f"   (95% CI: [{p_none_rec.ci95_low:+.2f}%, {p_none_rec.ci95_high:+.2f}%], "
-        f"t = {p_none_rec.t_statistic:+.2f}, paired t-test p < 0.01,\n"
-        f"   sign test p = {p_none_rec.sign_test_p:.4f}) "
+        f"t = {p_none_rec.t_statistic:+.2f}, paired t-test {format_p(p_none_rec.t_p_value)},\n"
+        f"   sign test {format_p(p_none_rec.sign_test_p)}) "
         f"across {p_none_rec.positive_count}/{n_total} seeds."
     )
     print(
@@ -572,7 +626,8 @@ def main() -> None:
     reduction_summary = (
         f"{p_red.mean:.1f}% in **{p_red.positive_count}/{n_total} seeds** "
         f"(95% CI: [{p_red.ci95_low:.1f}%, {p_red.ci95_high:.1f}%], "
-        f"t = {p_red.t_statistic:+.2f}, p < 0.001, sign test p = {p_red.sign_test_p:.4f})."
+        f"t = {p_red.t_statistic:+.2f}, {format_p(p_red.t_p_value)}, "
+        f"sign test {format_p(p_red.sign_test_p)})."
     )
     print(
         f"3. **46.4% to 61.5% Message Reduction Across All Budgets**:\n"
@@ -584,7 +639,8 @@ def main() -> None:
         f"**{p_days.non_positive_count}/{n_total} seeds** "
         f"(paired mean: {p_days.mean:+.2f} ± {p_days.std:.2f} d, "
         f"95% CI: [{p_days.ci95_low:+.2f}d, {p_days.ci95_high:+.2f}d], "
-        f"t = {p_days.t_statistic:+.2f}, p < 0.001, sign test p = {p_days.sign_test_p:.4f})."
+        f"t = {p_days.t_statistic:+.2f}, {format_p(p_days.t_p_value)}, "
+        f"sign test {format_p(p_days.sign_test_p)})."
     )
     print(
         f"4. **Faster & Quieter (Tighter Interval Bounded by Policy)**: DueBot resolves cash\n"

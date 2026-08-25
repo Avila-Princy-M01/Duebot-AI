@@ -5,7 +5,7 @@
 
 2. **How is the baseline comparison evaluated fairly?**
    All 3 evaluation strategies (`no_agent`, `naive_cadence`, `duebot`) share **one neutral, identical buyer response model** (`shared_should_settle` in `baselines.py`), evaluated with **paired within-seed statistics** and a **contact budget sweep** across 10 independent random generator seeds (~710 held-out test invoices):
-   * **Incremental Recovery Lift (+4.93% ± 3.93%, +₹ 4.76L vs No-Agent)**: DueBot captures $+4.93\%$ higher recovery ($p < 0.01$) than organic self-cure by actively recovering receivables from responsive debtors.
+   * **Incremental Recovery Lift (+4.93% ± 3.93%, +₹ 4.76L vs No-Agent)**: DueBot captures $+4.93\%$ higher recovery ($t = +3.96, p_t = 0.0033$, exact sign test $p = 0.0039$) than organic self-cure by actively recovering receivables from responsive debtors.
    * **100% Dispute Defect Protection Across All Budgets**: Naive cadence blindly spams disputed invoices (5.3 to 13.4 touches), whereas DueBot routes them to `HUMAN_REVIEW` with **0.0 touches**.
    * **46.4% to 61.5% Fewer Messages Across All Budgets**: Even at matched budget (`MAX_NAIVE = 3`), DueBot sends **46.4% fewer messages** (21.5 vs 40.1 touches) by selectively halting on self-cures and promises, rising to 61.5% fewer under default cadence.
    * **Recovery Rate Parity vs Naive (+0.77% ± 1.15%, 95% CI: [-0.05%, +1.60%])**: Both DueBot and naive cadence reach the responsive cohort ($t = +2.12, p = 0.063$). We do not claim an artificial recovery boost on cooperative buyers.
