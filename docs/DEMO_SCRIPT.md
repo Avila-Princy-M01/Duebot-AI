@@ -73,11 +73,12 @@ A complete, word-for-word teleprompter script and UI shot list for recording the
 **Spoken Script (Word-for-Word):**
 > *"Every single state transition, inbound message, and webhook confirmation is written to an append-only audit log. For financial compliance, there are zero silent updates.*
 >
-> *Now look at our 10-seed empirical benchmark across 710 held-out test invoices. We lead with our most critical finding:*
+> *Now look at our 10-seed empirical benchmark across 710 held-out test invoices. Here is what the data proves:*
 >
-> 1. *First: **100% Dispute Defect Protection**. In B2B payments, dunning a disputed invoice is a severe compliance violation. Naive cadences deliver up to 13.4 harassment touches on disputed accounts. DueBot delivers **0.0 touches across 100% of runs**.*
-> 2. *Second: **61.5% Fewer Messages Across Portfolios**. Even when a naive cadence is constrained to the exact same 3-touch budget, DueBot sends 46% fewer messages by pausing on promises and self-cures.*
-> 3. *Third: **Statistical Recovery Parity**. DueBot achieves full recovery parity (79.3% vs 78.5%) while resolving cash 12 hours faster through a tight 3-day adaptive interval that our policy gate makes completely safe."*
+> 1. *First: **Incremental Cash Recovery**. DueBot captures **+4.9 percentage points higher recovery (+₹4.76 Lakhs)** over organic self-cure alone ($p < 0.01$) by actively following up with responsive buyers.*
+> 2. *Second: **100% Dispute Defect Protection**. In B2B payments, dunning a disputed invoice is a severe compliance violation. Naive cadences deliver up to 13.4 harassment touches on disputed accounts. DueBot delivers **0.0 touches across 100% of runs** via its deterministic `can_contact()` policy gate.*
+> 3. *Third: **46.4% to 61.5% Message Reduction**. Even when a naive cadence is constrained to the exact same 3-touch budget, DueBot sends **46.4% fewer messages** by pausing on promises and self-cures, rising to **61.5% fewer messages** under unconstrained cadence.*
+> 4. *Fourth: **Faster and Quieter**. DueBot achieves full recovery parity while resolving cash 12 hours faster through a tight 3-day adaptive interval that our policy gate makes completely safe."*
 
 ---
 
