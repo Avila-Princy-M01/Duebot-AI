@@ -98,21 +98,23 @@ We make the system boundaries explicit and transparent:
 
 ---
 
-## Evaluation Benchmark (`split=test`, seed=42, n=71)
+## Evaluation Benchmark & Robustness
 
-Reproducible via `python scripts/run_eval.py` driving the **real deterministic engine** across the simulated timeline:
+Reproducible via `python scripts/run_eval.py` and `python scripts/run_multi_seed_eval.py` driving the **real deterministic engine** across simulated timelines:
 
-| Strategy | Recovery Rate | Total Recovered (INR) | Avg Days to Recovery | Contacts Sent | Recovery / Contact (Capital Efficiency) | Disputed Invoices |
-|----------|---------------|-----------------------|----------------------|---------------|---------------------------------|-------------------|
-| `no_agent` (Self-cure only) | 73.5% | ₹ 66,00,741 | 8.3 days | 0 | ₹ 0 / contact | 0 contacts |
-| `naive_cadence` (Blind 7-day interval) | 79.8% | ₹ 71,62,421 | 8.6 days | 48 | ₹ 1,49,217 / contact | Blindly spams (8 contacts) |
-| **`duebot` (Policy-aware agent)** | **79.8%** | **₹ 71,62,421** | **8.1 days** | **15** | **₹ 4,77,495 / contact (+220%)** | **Routes to `HUMAN_REVIEW` (0 contacts)** |
+### 10-Seed Multi-Seed Robustness (10 Seeds, ~710 Test Invoices, Mean ± Std Dev)
+
+| Strategy | Recovery Rate (%) | Recovered (INR Lakhs) | Avg Days to Recovery | Contacts Sent | Efficiency (₹/Contact) | Disputed Invoices |
+|:---|:---|:---|:---|:---|:---|:---|
+| `no_agent` (Self-cure only) | 74.4% ± 7.8% | ₹ 70.15L | 5.9 ± 2.0 days | 0.0 ± 0.0 | ₹ 0 / contact | 0.0 touches |
+| `naive_cadence` (Blind 7-day loop) | 78.5% ± 6.3% | ₹ 74.12L | 6.3 ± 1.9 days | 55.6 ± 15.3 | ₹ 1,40,531 / contact | Blindly spams (13.4 ± 3.8 touches) |
+| **`duebot` (Policy-aware agent)** | **79.3% ± 5.9%** | **₹ 74.92L** | **5.8 ± 1.9 days** | **21.5 ± 6.5** | **₹ 3,79,178 / contact (+170%)** | **Routes to `HUMAN_REVIEW` (0.0 touches)** |
 
 ### Key Takeaways:
 1. **Real Engine Execution**: DueBot runs its actual state machine (`transition`), policy guard (`can_contact`), and scheduler (`next_action_at`) on every simulated clock tick.
-2. **+220% Higher Capital Efficiency (₹ 4.77L vs ₹ 1.49L / contact)**: DueBot achieves maximum recovery while sending **68.8% fewer contacts** (15 vs 48) due to weekly frequency caps, sequence limits (3 touches max), and promise-aware pausing.
-3. **Faster Emergent Cash Resolution (8.1 vs 8.6 days)**: Driven naturally by DueBot's 3-day adaptive interval vs Naive's static 7-day timer.
-4. **Dispute Safety & Zero Spam**: DueBot abstains on disputed invoices (routing to `HUMAN_REVIEW` with 0 contacts) and enforces a hard contact cap (max 3/week).
+2. **+170% Higher Capital Efficiency (61.3% Fewer Contacts)**: DueBot achieves maximum recovery while sending **61.3% fewer messages** (21.5 vs 55.6 touches) due to weekly frequency caps, sequence limits (3 touches max), and promise-aware pausing.
+3. **Dispute Safety & Defect Prevention**: DueBot abstains on disputed invoices (routing to `HUMAN_REVIEW` with 0 touches), preventing the 13.4 spam touches that a blind cadence delivers.
+4. **Epistemic Honesty on Speed**: DueBot trends slightly faster (5.8 vs 6.3 days) due to its 3-day adaptive interval, though this difference overlaps within variance (±1.9 days). We present this as an operational dynamic rather than an inflated headline claim.
 
 ---
 

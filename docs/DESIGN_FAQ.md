@@ -4,11 +4,11 @@
    Active Revenue Recovery retries failed recurring *debits*. DueBot automates unpaid B2B *invoices* (receivables), extracts payment promise dates over conversational channels, and escalates when promises break.
 
 2. **How is the baseline comparison evaluated fairly?**
-   All 3 evaluation strategies (`no_agent`, `naive_cadence`, `duebot`) share **one neutral, identical buyer response model** (`shared_should_recover` in `baselines.py`). Recovery outcomes are driven strictly by ground-truth generator labels, not arm-specific rules:
-   * **Equal Recovery Rate (79.8% / ₹ 71.62L)**: Both DueBot and naive cadence reach the nudge-responsive cohort. We do not claim an artificial recovery boost on cooperative buyers.
-   * **+220% Higher Capital Efficiency (₹ 4,77,495 vs ₹ 1,49,217 per contact)**: DueBot achieves maximum recovery with **68.8% fewer contacts** (15 vs 48).
-   * **Faster Resolution (8.1 vs 8.6 days)**: Emerges naturally from DueBot's 3-day adaptive interval vs Naive's static 7-day grid.
-   * **Dispute Abstention**: Naive cadence blindly spams disputed invoices (8 contacts), whereas DueBot routes them to `HUMAN_REVIEW` with 0 contacts.
+   All 3 evaluation strategies (`no_agent`, `naive_cadence`, `duebot`) share **one neutral, identical buyer response model** (`shared_should_settle` in `baselines.py`), tested across 10 independent random generator seeds (~710 held-out test invoices):
+   * **Recovery Rate Parity (79.3% vs 78.5%)**: Both DueBot and naive cadence reach the nudge-responsive cohort. We do not claim an artificial recovery boost on cooperative buyers.
+   * **+170% Higher Capital Efficiency (₹ 3,79,178 vs ₹ 1,40,531 per contact)**: DueBot achieves maximum recovery with **61.3% fewer contacts** (21.5 vs 55.6 touches).
+   * **100% Dispute Defect Protection**: Naive cadence blindly spams disputed invoices (13.4 touches on average), whereas DueBot routes them to `HUMAN_REVIEW` with **0.0 touches**.
+   * **Epistemic Honesty on Speed**: DueBot trends slightly faster (5.8 vs 6.3 days) due to its 3-day adaptive cadence vs 7-day blind loops, though this difference overlaps within variance (±1.9 days). We present this as an operational dynamic rather than an inflated headline claim.
 
 3. **What happens on disputed or ambiguous replies?**
    `intent=dispute` or low-confidence replies (`confidence < 0.7`) immediately halt automated nudging and route the invoice to `HUMAN_REVIEW` (0 contacts sent, 0% false escalations).

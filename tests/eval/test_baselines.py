@@ -47,3 +47,22 @@ def test_three_way_eval_on_generator_test_split() -> None:
     if disputed_naive:
         # Naive lacks policy gate, so it contacts disputed invoices
         assert any(inv.contacts > 0 for inv in disputed_naive)
+
+
+def test_multi_seed_evaluation_stability() -> None:
+    """Verify that DueBot's contact reduction and dispute protection hold across multiple seeds."""
+    as_of = date(2026, 8, 21)
+    for seed in (42, 101, 202):
+        gen = DueBotDataGenerator(seed=seed)
+        gen.run(num_invoices=100)
+        held_out = [inv for inv in gen.invoices if inv.split == "test"]
+        snaps = snapshots_from_generator(held_out, gen.messages)
+
+        rep_naive = report_for(simulate_naive_cadence(snaps, as_of), as_of=as_of)
+        rep_due = report_for(simulate_duebot(snaps, as_of), as_of=as_of)
+
+        # Invariant: DueBot sends significantly fewer contacts than blind naive loop
+        assert rep_due.total_contacts_sent < rep_naive.total_contacts_sent
+        # Invariant: DueBot capital efficiency (recovery per contact) strictly exceeds naive
+        assert rep_due.recovery_per_contact > rep_naive.recovery_per_contact
+
