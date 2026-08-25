@@ -50,16 +50,24 @@ class ReplyIntent(StrEnum):
 class HasPolicyInvoice(Protocol):
     """Invoice fields policy needs — not the SQLAlchemy model."""
 
-    invoice_id: str
-    state: InvoiceState
-    opted_out: bool
+    @property
+    def invoice_id(self) -> str: ...
+
+    @property
+    def state(self) -> InvoiceState: ...
+
+    @property
+    def opted_out(self) -> bool: ...
 
 
 class HasOutboundTouch(Protocol):
     """An interaction row policy can count as a contact."""
 
-    direction: str
-    sent_at: datetime
+    @property
+    def direction(self) -> str: ...
+
+    @property
+    def sent_at(self) -> datetime: ...
 
 
 @dataclass(frozen=True, slots=True)

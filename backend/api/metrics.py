@@ -88,7 +88,7 @@ async def baseline_metrics(
     gen = DueBotDataGenerator(seed=42)
     gen.run(num_invoices=120)
     test = [inv for inv in gen.invoices if inv.split == "test"]
-    snaps = snapshots_from_generator(test)
+    snaps = snapshots_from_generator(test, gen.messages)
     as_of = date(2026, 8, 21)
     _ = (
         report_for(simulate_no_agent(snaps, as_of), as_of=as_of),

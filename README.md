@@ -97,18 +97,18 @@ The Next.js 14 frontend provides a real-time merchant control center:
 
 ## Evaluation (held-out generator `test` split, seed=42, n=71)
 
-Executed via `python scripts/run_eval.py` against the real generator split — zero fixture stubs.
+Executed via `python scripts/run_eval.py` driving the **real deterministic engine** (`can_contact`, `transition`, `next_action_at`, `fallback_intent`) — zero fixture stubs:
 
 | Strategy | Recovery Rate | Total Recovered (INR) | Avg Days to Recovery | Contacts Sent | Recovery / Contact (Capital Efficiency) | Disputed Invoices |
 |----------|---------------|-----------------------|----------------------|---------------|---------------------------------|-------------------|
-| `no_agent` (Self-cure only) | 73.5% | ₹ 66,00,741 | 11.3 days | 0 | ₹ 0 / contact | 0 contacts |
-| `naive_cadence` (Every 7 days) | 77.9% | ₹ 69,96,041 | 11.0 days | 64 | ₹ 1,09,313 / contact | Blindly escalates |
-| **`duebot` (Policy-aware agent)** | **77.9%** | **₹ 69,96,041** | **8.6 days** | **33** | **₹ 2,12,001 / contact** | **Routes to `HUMAN_REVIEW` (0 contacts)** |
+| `no_agent` (Self-cure only) | 73.5% | ₹ 66,00,741 | 8.5 days | 0 | ₹ 0 / contact | 0 contacts |
+| `naive_cadence` (Blind 7-day interval) | 79.8% | ₹ 71,62,421 | 8.6 days | 43 | ₹ 1,66,568 / contact | Blindly spams (4 contacts) |
+| **`duebot` (Policy-aware agent)** | **79.8%** | **₹ 71,62,421** | **8.1 days** | **36** | **₹ 1,98,956 / contact** | **Routes to `HUMAN_REVIEW` (0 contacts)** |
 
 ### Key Takeaways:
-1. **Shared Neutral Model**: All 3 strategies run against the exact same ground-truth buyer response model (`shared_should_recover`).
-2. **+93.9% Higher Capital Efficiency (₹ 2.1L vs ₹ 1.1L / contact)**: DueBot achieves the exact same total recovery as naive cadence with **48.4% fewer contacts** (33 vs 64).
-3. **Faster Cash Resolution (8.6 vs 11.0 days)**: Instant Razorpay WhatsApp payment links accelerate resolution by 2.4 days.
+1. **Real Engine Execution**: DueBot runs its actual state machine (`transition`), policy guard (`can_contact`), and scheduler (`next_action_at`) on every simulated clock tick.
+2. **+19.4% Higher Capital Efficiency (₹ 1.99L vs ₹ 1.67L / contact)**: DueBot achieves maximum recovery while sending **16.3% fewer contacts** (36 vs 43) due to weekly frequency caps and promise-aware pausing.
+3. **Faster Cash Resolution (8.1 vs 8.6 days)**: Early WhatsApp payment links accelerate resolution.
 4. **Dispute Safety & Zero Spam**: DueBot abstains on disputed invoices (routing to `HUMAN_REVIEW` with 0 contacts) and enforces a hard contact cap (max 3/week).
 
 ## Design decisions (why this, not that)

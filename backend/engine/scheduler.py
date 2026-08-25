@@ -29,10 +29,17 @@ PROMISE_BREAK_GRACE_DAYS = 3
 class HasScheduleInvoice(Protocol):
     """Invoice fields the scheduler reads."""
 
-    invoice_id: str
-    state: InvoiceState
-    opted_out: bool
-    due_date: date | None
+    @property
+    def invoice_id(self) -> str: ...
+
+    @property
+    def state(self) -> InvoiceState: ...
+
+    @property
+    def opted_out(self) -> bool: ...
+
+    @property
+    def due_date(self) -> date | None: ...
 
 
 class HasScheduleTouch(Protocol):

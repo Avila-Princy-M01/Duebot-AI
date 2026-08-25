@@ -27,7 +27,7 @@ def run_eval(*, seed: int = 42, num_invoices: int = 260) -> dict[str, object]:
     gen.run(num_invoices=num_invoices)
     held_out = [inv for inv in gen.invoices if inv.split == "test"]
     as_of: date = SIM_TODAY
-    snaps = snapshots_from_generator(held_out)
+    snaps = snapshots_from_generator(held_out, gen.messages)
     run_id = str(uuid4())
     strategies = {
         "no_agent": simulate_no_agent(snaps, as_of),

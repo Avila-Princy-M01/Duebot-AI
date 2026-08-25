@@ -1,5 +1,5 @@
 {
-  "run_id": "df920ca6-c053-4036-8f41-163f90df9602",
+  "run_id": "2208b64d-9fa7-4f3c-acad-3e16087d5f9d",
   "as_of": "2026-08-21",
   "n_test": 71,
   "strategies": {
@@ -9,10 +9,10 @@
       "recovered_value": "6600741.0",
       "total_value": "8975701.0",
       "recovery_rate": 0.7354011681093209,
-      "recovery_30d": 0.6822287195172834,
-      "recovery_60d": 0.711425324885488,
+      "recovery_30d": 0.7046042420530719,
+      "recovery_60d": 0.7252292606449345,
       "recovery_90d": 0.7354011681093209,
-      "avg_days_to_recovery": 11.277777777777779,
+      "avg_days_to_recovery": 8.462962962962964,
       "promise_kept_rate": 0.2857142857142857,
       "false_escalation_rate": 0.0,
       "total_contacts_sent": 0,
@@ -20,33 +20,33 @@
     },
     "naive_cadence": {
       "eval_set_size": 71,
-      "recovered_count": 55,
-      "recovered_value": "6996041.0",
+      "recovered_count": 56,
+      "recovered_value": "7162421.0",
       "total_value": "8975701.0",
-      "recovery_rate": 0.779442296484698,
-      "recovery_30d": 0.7262698478926605,
-      "recovery_60d": 0.755466453260865,
-      "recovery_90d": 0.779442296484698,
-      "avg_days_to_recovery": 11.036363636363637,
+      "recovery_rate": 0.7979790102188119,
+      "recovery_30d": 0.767182084162563,
+      "recovery_60d": 0.7878071027544256,
+      "recovery_90d": 0.7979790102188119,
+      "avg_days_to_recovery": 8.589285714285714,
       "promise_kept_rate": 0.2857142857142857,
       "false_escalation_rate": 0.0,
-      "total_contacts_sent": 64,
-      "recovery_per_contact": 109313.140625
+      "total_contacts_sent": 43,
+      "recovery_per_contact": 166567.93023255814
     },
     "duebot": {
       "eval_set_size": 71,
-      "recovered_count": 55,
-      "recovered_value": "6996041.0",
+      "recovered_count": 56,
+      "recovered_value": "7162421.0",
       "total_value": "8975701.0",
-      "recovery_rate": 0.779442296484698,
-      "recovery_30d": 0.748645370428449,
-      "recovery_60d": 0.7692703890203116,
-      "recovery_90d": 0.779442296484698,
-      "avg_days_to_recovery": 8.618181818181819,
+      "recovery_rate": 0.7979790102188119,
+      "recovery_30d": 0.767182084162563,
+      "recovery_60d": 0.7878071027544256,
+      "recovery_90d": 0.7979790102188119,
+      "avg_days_to_recovery": 8.125,
       "promise_kept_rate": 0.2857142857142857,
       "false_escalation_rate": 0.0,
-      "total_contacts_sent": 33,
-      "recovery_per_contact": 212001.24242424243
+      "total_contacts_sent": 36,
+      "recovery_per_contact": 198956.13888888888
     }
   }
 }
