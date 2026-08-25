@@ -16,10 +16,19 @@ with urllib.request.urlopen(req) as r:
     data = json.loads(r.read().decode())
     invoices = data["data"]
     print(f"[TEST 1: Invoices] Fetched {len(invoices)} invoices.")
-    overdue_inv = next((inv for inv in invoices if inv["status"] == "overdue" and inv["state"] in ("created", "overdue")), invoices[0])
+    overdue_inv = next(
+        (
+            inv
+            for inv in invoices
+            if inv["status"] == "overdue" and inv["state"] in ("created", "overdue")
+        ),
+        invoices[0],
+    )
     target_id = overdue_inv["invoice_id"]
     inv_num = overdue_inv.get("invoice_number")
-    print(f"  -> Target invoice for nudge: {target_id} (Number: {inv_num}, Status: {overdue_inv.get('status')}, State: {overdue_inv.get('state')})")
+    st = overdue_inv.get("status")
+    state = overdue_inv.get("state")
+    print(f"  -> Target invoice: {target_id} (Number: {inv_num}, Status: {st}, State: {state})")
 
 # Test 2: Preview Nudge
 req = urllib.request.Request(f"http://localhost:8000/api/nudge/preview/{target_id}")
@@ -38,7 +47,9 @@ req = urllib.request.Request(
 )
 with urllib.request.urlopen(req) as r:
     exec_res = json.loads(r.read().decode())["data"]
-    print(f"[TEST 3: Execute Nudge] Sent: {exec_res.get('sent')} | Dispatched: {exec_res.get('decision', {}).get('allowed')}")
+    sent = exec_res.get("sent")
+    allowed = exec_res.get("decision", {}).get("allowed")
+    print(f"[TEST 3: Execute Nudge] Sent: {sent} | Dispatched: {allowed}")
 
 # Test 4: Verify Inbox has outbound message
 req = urllib.request.Request("http://localhost:8000/api/inbox?limit=5")
@@ -72,7 +83,9 @@ with urllib.request.urlopen(req) as r:
 # Test 7: Assistant Voice / Query API
 req = urllib.request.Request(
     "http://localhost:8000/api/assistant/ask",
-    data=json.dumps({"query": "What is our total amount at risk and aging distribution?"}).encode("utf-8"),
+    data=json.dumps(
+        {"query": "What is our total amount at risk and aging distribution?"}
+    ).encode("utf-8"),
     headers={"Content-Type": "application/json"},
 )
 with urllib.request.urlopen(req) as r:
@@ -93,7 +106,10 @@ with urllib.request.urlopen(req) as r:
         rate = (rec_val / tot_val) if tot_val else 0.0
         days = m.get("avg_days_to_recovery", 0.0)
         contacts = m.get("total_contacts_sent", 0)
-        print(f"  -> Strategy: {strat:15} | Recovery: {rate:.1%} (INR {rec_val:,.0f}) | Days: {days:.1f} | Contacts: {contacts}")
+        print(
+            f"  -> Strategy: {strat:15} | Recovery: {rate:.1%} (INR {rec_val:,.0f}) "
+            f"| Days: {days:.1f} | Contacts: {contacts}"
+        )
 
 print("================================================================")
 print("              DRY RUN COMPLETED SUCCESSFULLY!                   ")
