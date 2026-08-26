@@ -133,6 +133,7 @@ Reproducible via `python scripts/run_eval.py` and `python scripts/run_multi_seed
 | Choice | Why |
 |--------|-----|
 | Hand-rolled state machine | Legible under interview; no LangChain agent loop for money-adjacent actions |
+| Strictly monotonic audit graph | Every audit trail is mathematically proven to be a connected graph chain ($s_0 = \text{created}, s_{i}.\text{to} = s_{i+1}.\text{from}, s_n = \text{invoice.state}$) with monotonic timestamps ($t_{i} < t_{i+1}$) |
 | Postgres / SQLite | Structured invoices/promises/audit — not a retrieval problem |
 | Poll loop / task triggers | Throughput does not justify distributed queue overhead |
 | Claude / Gemini tool-use | Strict schema enforcement; never regex-parse model prose |
