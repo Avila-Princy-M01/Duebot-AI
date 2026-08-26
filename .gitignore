@@ -31,3 +31,6 @@ frontend/out/
 .DS_Store
 Thumbs.db
 *.swp
+
+# Scratch / diagnostics
+scratch/

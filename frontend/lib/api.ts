@@ -98,6 +98,10 @@ export async function listBaselines(): Promise<Envelope<BaselineRow[]>> {
   return request<Envelope<BaselineRow[]>>("/api/metrics/baseline");
 }
 
+export async function getRecoveryMetrics(split = "all"): Promise<Envelope<import("./types").RecoveryMetrics>> {
+  return request<Envelope<import("./types").RecoveryMetrics>>(`/api/metrics/recovery?split=${split}`);
+}
+
 export async function listInbox(): Promise<Envelope<InboxRow[]>> {
   return request<Envelope<InboxRow[]>>("/api/inbox");
 }

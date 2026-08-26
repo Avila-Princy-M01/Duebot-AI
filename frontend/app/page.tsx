@@ -1,26 +1,30 @@
 import Link from "next/link";
 import { AgingBuckets } from "../components/dashboard/AgingBuckets";
+import { AttributionBreakdown } from "../components/dashboard/AttributionBreakdown";
 import { MetricCard } from "../components/dashboard/MetricCards";
 import { SeedButton } from "../components/ui/SeedButton";
-import { listAudit, listInvoices, verifyAudit } from "../lib/api";
+import { getRecoveryMetrics, listAudit, listInvoices, verifyAudit } from "../lib/api";
 import { formatINR } from "../lib/format";
-import type { AuditVerification, InvoiceRow } from "../lib/types";
+import type { AuditVerification, InvoiceRow, RecoveryMetrics } from "../lib/types";
 
 export default async function HomePage() {
   let invoices: InvoiceRow[] = [];
   let auditTotal = 0;
   let verification: AuditVerification | null = null;
+  let recoveryMetrics: RecoveryMetrics | null = null;
   let error: string | null = null;
 
   try {
-    const [invRes, auditRes, verifyRes] = await Promise.all([
+    const [invRes, auditRes, verifyRes, metricsRes] = await Promise.all([
       listInvoices(),
       listAudit({ limit: 1 }),
       verifyAudit().catch(() => null),
+      getRecoveryMetrics("all").catch(() => null),
     ]);
     invoices = invRes.data;
     auditTotal = auditRes.meta.total_count ?? 0;
     verification = verifyRes ? verifyRes.data : null;
+    recoveryMetrics = metricsRes ? metricsRes.data : null;
   } catch (exc) {
     error = exc instanceof Error ? exc.message : "API unavailable";
   }
@@ -107,29 +111,7 @@ export default async function HomePage() {
       </div>
 
       {/* Domain Grounding: Recovery Split & Attribution */}
-      <div className="glass-card rounded-2xl p-5 border border-sky-500/20 bg-gradient-to-r from-sky-950/30 via-slate-900/40 to-indigo-950/30">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-sky-400">Receivables Recovery Attribution Split</span>
-              <span className="rounded-full bg-sky-500/20 px-2 py-0.5 text-[10px] font-bold text-sky-300 border border-sky-400/30">
-                10-Seed Benchmark Grounded
-              </span>
-            </div>
-            <p className="text-xs text-slate-300">
-              <span className="font-semibold text-white">74.4% Organic Self-Cure Baseline</span> (would have paid anyway without intervention) +{" "}
-              <span className="font-semibold text-emerald-400">+4.9pp Agent-Attributed Recovery Lift</span> (+₹4.76L recovered, <span className="font-mono text-slate-400">p = 0.003</span>) while cutting spam touches by <span className="font-semibold text-emerald-400">-61.5%</span>.
-            </p>
-          </div>
-          <Link
-            href="/metrics"
-            className="inline-flex items-center gap-1.5 self-start md:self-auto rounded-xl border border-sky-400/30 bg-sky-500/10 px-3.5 py-2 text-xs font-bold text-sky-300 transition-all hover:bg-sky-500/20 hover:border-sky-400/50"
-          >
-            <span>View 10-Seed Benchmark</span>
-            <span>→</span>
-          </Link>
-        </div>
-      </div>
+      <AttributionBreakdown invoices={invoices} recoveryMetrics={recoveryMetrics} />
 
       {/* Aging Distribution */}
       <AgingBuckets invoices={invoices} />

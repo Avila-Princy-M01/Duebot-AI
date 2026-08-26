@@ -1,14 +1,23 @@
+import { AttributionBreakdown } from "../../components/dashboard/AttributionBreakdown";
 import { BaselineComparison } from "../../components/dashboard/BaselineComparison";
-import { listBaselines } from "../../lib/api";
-import type { BaselineRow } from "../../lib/types";
+import { getRecoveryMetrics, listBaselines, listInvoices } from "../../lib/api";
+import type { BaselineRow, InvoiceRow, RecoveryMetrics } from "../../lib/types";
 
 export default async function MetricsPage() {
   let rows: BaselineRow[] = [];
+  let invoices: InvoiceRow[] = [];
+  let recoveryMetrics: RecoveryMetrics | null = null;
   let error: string | null = null;
 
   try {
-    const payload = await listBaselines();
-    rows = payload?.data ?? [];
+    const [baselinesRes, invRes, metricsRes] = await Promise.all([
+      listBaselines(),
+      listInvoices().catch(() => null),
+      getRecoveryMetrics("all").catch(() => null),
+    ]);
+    rows = baselinesRes?.data ?? [];
+    invoices = invRes?.data ?? [];
+    recoveryMetrics = metricsRes?.data ?? null;
   } catch (exc) {
     error = exc instanceof Error ? exc.message : "Failed to load baseline benchmarks";
   }
@@ -85,6 +94,9 @@ export default async function MetricsPage() {
           </p>
         </div>
       ) : null}
+
+      {/* Ground-Truth Recovery Attribution Split */}
+      <AttributionBreakdown invoices={invoices} recoveryMetrics={recoveryMetrics} />
 
       {/* Immediate Numbers & Comparison Cards */}
       <BaselineComparison rows={rows} />

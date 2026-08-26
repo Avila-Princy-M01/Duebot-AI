@@ -117,6 +117,27 @@ export interface BaselineRow {
   created_at: string;
 }
 
+export interface RecoveryMetrics {
+  eval_set_size: number;
+  recovered_count: number;
+  recovered_value: string;
+  total_value: string;
+  recovery_rate: number;
+  recovery_30d: number;
+  recovery_60d: number;
+  recovery_90d: number;
+  avg_days_to_recovery: number;
+  promise_kept_rate: number;
+  false_escalation_rate: number;
+  total_contacts_sent: number;
+  recovery_per_contact: number;
+  baseline_recovered_count: number;
+  duebot_attributed_recovered_count: number;
+  baseline_recovery_rate: number;
+  duebot_attributed_recovery_rate: number;
+  split: string;
+}
+
 export interface InboxRow {
   interaction_id: string;
   invoice_id: string;
