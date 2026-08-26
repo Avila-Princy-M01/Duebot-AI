@@ -124,7 +124,10 @@ def attributed_recovery_rate(invoices: Sequence[MetricInvoice]) -> tuple[float, 
     for inv in invoices:
         if not _is_recovered(inv):
             continue
-        if inv.would_have_paid_without_intervention is True:
+        if (
+            inv.would_have_paid_without_intervention is True
+            or (inv.paid_date is not None and inv.paid_date <= inv.due_date)
+        ):
             baseline += inv.total_amount
         else:
             attributed += inv.total_amount
@@ -197,7 +200,12 @@ def recovery_report(
     rpc = float(recovered_value / Decimal(total_contacts_sent)) if total_contacts_sent > 0 else 0.0
 
     baseline_count = sum(
-        1 for inv in recovered_invoices if inv.would_have_paid_without_intervention is True
+        1
+        for inv in recovered_invoices
+        if (
+            inv.would_have_paid_without_intervention is True
+            or (inv.paid_date is not None and inv.paid_date <= inv.due_date)
+        )
     )
     attributed_count = len(recovered_invoices) - baseline_count
     baseline_rate, attributed_rate = attributed_recovery_rate(invoices)

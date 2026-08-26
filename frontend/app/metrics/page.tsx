@@ -96,10 +96,16 @@ export default async function MetricsPage() {
       ) : null}
 
       {/* Ground-Truth Recovery Attribution Split */}
-      <AttributionBreakdown invoices={invoices} recoveryMetrics={recoveryMetrics} />
+      <AttributionBreakdown
+        invoices={invoices}
+        recoveryMetrics={recoveryMetrics}
+        showBenchmarkLink={false}
+      />
 
       {/* Immediate Numbers & Comparison Cards */}
-      <BaselineComparison rows={rows} />
+      <div id="strategy-benchmarks" className="scroll-mt-6">
+        <BaselineComparison rows={rows} />
+      </div>
 
       {/* Methodology & Reproducibility Footnote */}
       <div className="rounded-2xl border border-sky-500/20 bg-sky-950/20 p-5 text-xs text-slate-300 space-y-2">

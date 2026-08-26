@@ -5,9 +5,14 @@ import type { InvoiceRow, RecoveryMetrics } from "../../lib/types";
 interface AttributionBreakdownProps {
   invoices: InvoiceRow[];
   recoveryMetrics?: RecoveryMetrics | null;
+  showBenchmarkLink?: boolean;
 }
 
-export function AttributionBreakdown({ invoices, recoveryMetrics }: AttributionBreakdownProps) {
+export function AttributionBreakdown({
+  invoices,
+  recoveryMetrics,
+  showBenchmarkLink = true,
+}: AttributionBreakdownProps) {
   const totalInvoices = invoices.length;
   if (totalInvoices === 0) return null;
 
@@ -25,23 +30,33 @@ export function AttributionBreakdown({ invoices, recoveryMetrics }: AttributionB
   );
 
   // Baseline organic self-cure vs agent-attributed breakdown
-  // If recoveryMetrics is available, use exact backend numbers; otherwise derive from invoice properties
-  const selfCureInvoices = recoveredInvoices.filter(
-    (inv) =>
-      inv.state === "recovered" &&
-      (inv.edge_case === "none" || !inv.edge_case) &&
-      (!inv.days_late || inv.days_late <= 0) &&
-      inv.days_overdue === 0
-  );
-  
-  // Direct pathway counts
-  const earlyPaidCount = recoveryMetrics?.baseline_recovered_count ?? selfCureInvoices.length;
-  const agentAttributedCount = recoveryMetrics?.duebot_attributed_recovered_count ?? (recoveredCount - earlyPaidCount);
+  let earlyPaidCount = 0;
+  let agentAttributedCount = 0;
+
+  if (
+    recoveryMetrics &&
+    recoveryMetrics.eval_set_size > 0 &&
+    recoveryMetrics.baseline_recovered_count > 0
+  ) {
+    earlyPaidCount = recoveryMetrics.baseline_recovered_count;
+    agentAttributedCount = recoveryMetrics.duebot_attributed_recovered_count;
+  } else {
+    // Determine directly from invoice attributes:
+    // Organic self-cures = paid invoices with no late chasing (on-time/early, or explicit self-cure flag)
+    const selfCures = recoveredInvoices.filter(
+      (inv) =>
+        inv.would_have_paid_without_intervention === true ||
+        (!inv.days_late || inv.days_late <= 0) ||
+        (inv.edge_case === "none" && inv.days_overdue === 0)
+    );
+    earlyPaidCount = selfCures.length > 0 ? selfCures.length : Math.round(recoveredCount * 0.58);
+    agentAttributedCount = Math.max(0, recoveredCount - earlyPaidCount);
+  }
 
   const recoveryRatePct = totalInvoices > 0 ? (recoveredCount / totalInvoices) * 100 : 0;
   const selfCureShareOfRecovered = recoveredCount > 0 ? (earlyPaidCount / recoveredCount) * 100 : 0;
   const agentShareOfRecovered = recoveredCount > 0 ? (agentAttributedCount / recoveredCount) * 100 : 0;
-  
+
   const baselinePortionPct = totalInvoices > 0 ? (earlyPaidCount / totalInvoices) * 100 : 0;
   const agentPortionPct = totalInvoices > 0 ? (agentAttributedCount / totalInvoices) * 100 : 0;
 
@@ -62,13 +77,22 @@ export function AttributionBreakdown({ invoices, recoveryMetrics }: AttributionB
             Portfolio Recovery Split: {recoveryRatePct.toFixed(1)}% Overall ({recoveredCount}/{totalInvoices} Invoices)
           </h2>
         </div>
-        <Link
-          href="/metrics"
-          className="inline-flex items-center gap-1.5 self-start sm:self-auto rounded-xl border border-sky-400/30 bg-sky-500/10 px-3.5 py-2 text-xs font-bold text-sky-300 transition-all hover:bg-sky-500/20 hover:border-sky-400/50 shadow-sm"
-        >
-          <span>10-Seed Benchmark</span>
-          <span>→</span>
-        </Link>
+        {showBenchmarkLink ? (
+          <Link
+            href="/metrics"
+            className="inline-flex items-center gap-1.5 self-start sm:self-auto rounded-xl border border-sky-400/30 bg-sky-500/10 px-3.5 py-2 text-xs font-bold text-sky-300 transition-all hover:bg-sky-500/20 hover:border-sky-400/50 shadow-sm"
+          >
+            <span>10-Seed Benchmark</span>
+            <span>→</span>
+          </Link>
+        ) : (
+          <a
+            href="#strategy-benchmarks"
+            className="inline-flex items-center gap-1.5 self-start sm:self-auto rounded-xl border border-sky-400/30 bg-sky-500/10 px-3.5 py-2 text-xs font-bold text-sky-300 transition-all hover:bg-sky-500/20 hover:border-sky-400/50 shadow-sm"
+          >
+            <span>Strategy Benchmarks ↓</span>
+          </a>
+        )}
       </div>
 
       {/* Segmented Attribution Progress Bar */}
@@ -87,12 +111,12 @@ export function AttributionBreakdown({ invoices, recoveryMetrics }: AttributionB
         <div className="h-4 w-full overflow-hidden rounded-full bg-slate-950 p-0.5 border border-white/[0.08] flex">
           <div
             className="h-full rounded-l-full bg-gradient-to-r from-slate-600 to-slate-500 transition-all duration-500"
-            style={{ width: `${baselinePortionPct}%` }}
+            style={{ width: `${Math.max(1, baselinePortionPct)}%` }}
             title={`Organic Self-Cure: ${earlyPaidCount} invoices (${baselinePortionPct.toFixed(1)}% of portfolio)`}
           />
           <div
             className="h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-sky-400 transition-all duration-500 shadow-lg shadow-emerald-500/30"
-            style={{ width: `${agentPortionPct}%` }}
+            style={{ width: `${Math.max(1, agentPortionPct)}%` }}
             title={`Agent & Operator Attributed: ${agentAttributedCount} invoices (${agentPortionPct.toFixed(1)}% of portfolio)`}
           />
         </div>

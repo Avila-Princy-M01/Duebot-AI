@@ -51,20 +51,25 @@ async def recovery_metrics(
 ) -> SuccessEnvelope[RecoveryMetricsOut]:
     """Live recovery metrics from the database for ``split``."""
     today = as_of or date.today()
-    result = await session.execute(select(Invoice).where(Invoice.split == split))
+    if split == "all":
+        result = await session.execute(select(Invoice))
+    else:
+        result = await session.execute(select(Invoice).where(Invoice.split == split))
     invoices = list(result.scalars())
     invoice_ids = [inv.invoice_id for inv in invoices]
 
     # Count outbound contacts actually sent for this split's invoice set.
-    contacts_result = await session.execute(
-        select(func.count())
-        .select_from(Interaction)
-        .where(
-            Interaction.direction == "outbound",
-            Interaction.invoice_id.in_(invoice_ids),
+    total_contacts = 0
+    if invoice_ids:
+        contacts_result = await session.execute(
+            select(func.count())
+            .select_from(Interaction)
+            .where(
+                Interaction.direction == "outbound",
+                Interaction.invoice_id.in_(invoice_ids),
+            )
         )
-    )
-    total_contacts = int(contacts_result.scalar_one() or 0)
+        total_contacts = int(contacts_result.scalar_one() or 0)
 
     wrapped = [_MetricInv(inv) for inv in invoices]
     report = recovery_report(wrapped, as_of=today, total_contacts_sent=total_contacts)
