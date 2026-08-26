@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.data.csv_mapper import (
     parse_optional_date,
 )
-from backend.data.generator import BuyerMessage, DueBotDataGenerator
+from backend.data.generator import SIM_TODAY, BuyerMessage, DueBotDataGenerator
 from backend.engine.states import Actor, InvoiceState, TransitionEvent, transition
 from backend.logging_util import mask_email, mask_phone
 from backend.models.audit_log import AuditLog
@@ -22,6 +22,8 @@ from backend.models.invoice import Invoice
 from backend.models.merchant import Merchant
 from backend.models.promise import Promise
 from backend.tasks.lifecycle import InvoiceRef
+
+SIM_NOW = datetime.combine(SIM_TODAY, datetime.min.time()).replace(hour=18, tzinfo=UTC)
 
 logger = structlog.get_logger("duebot.seed")
 
@@ -211,8 +213,13 @@ async def seed_from_generator(
         metadata: dict[str, object] | None,
         target_dt: datetime,
     ) -> datetime:
-        # Monotonic guard: Each step occurs strictly after the previous step
-        actual_dt = max(target_dt, clock + timedelta(seconds=15))
+        if target_dt > SIM_NOW:
+            return clock
+        # Monotonic guard: Each step occurs strictly after the previous step, capped at SIM_NOW
+        actual_dt = min(max(target_dt, clock + timedelta(seconds=15)), SIM_NOW)
+        if actual_dt <= clock:
+            return clock
+
         res = transition(
             ref,
             event,
@@ -260,9 +267,9 @@ async def seed_from_generator(
             target_dt: datetime,
             _inv: Invoice = orm_inv,
             _ref: InvoiceRef = ref,
-        ) -> None:
+        ) -> bool:
             nonlocal current_clock
-            current_clock = _record_step(
+            new_clock = _record_step(
                 _inv,
                 _ref,
                 current_clock,
@@ -272,6 +279,10 @@ async def seed_from_generator(
                 metadata=metadata,
                 target_dt=target_dt,
             )
+            if new_clock > current_clock:
+                current_clock = new_clock
+                return True
+            return False
 
         inbound = inbound_msgs_by_invoice.get(inv.invoice_id)
         outbound = outbound_msgs_by_invoice.get(inv.invoice_id, [])
@@ -286,6 +297,7 @@ async def seed_from_generator(
             inv.status == "paid"
             and paid_date_obj is not None
             and paid_date_obj <= due_date_obj
+            and paid_date_obj <= SIM_TODAY
             and not has_outbound
             and not inbound
             and inv.promise_outcome not in ("pending", "kept", "broken")
@@ -311,9 +323,16 @@ async def seed_from_generator(
             )
             continue
 
-        # Aging step: CREATED -> OVERDUE
+        # If due_date is in the future relative to SIM_TODAY, invoice has not aged yet!
+        if due_date_obj > SIM_TODAY:
+            orm_inv.state = InvoiceState.CREATED.value
+            orm_inv.days_overdue = 0
+            orm_inv.status = "pending"
+            continue
+
+        # Aging step: CREATED -> OVERDUE (only when due_date <= SIM_TODAY)
         due_dt = _dt(f"{inv.due_date}T10:{(idx * 5) % 60:02d}:{(idx * 11) % 60:02d}")
-        step(
+        if not step(
             TransitionEvent.AGED,
             reasoning=(
                 f"Invoice reached due date ({inv.due_date}) with outstanding "
@@ -322,7 +341,8 @@ async def seed_from_generator(
             actor="system",
             metadata={"event": "aged", "due_date": str(inv.due_date)},
             target_dt=due_dt,
-        )
+        ):
+            continue
 
         # Self-cure payment after aging without nudge
         if (
@@ -363,7 +383,7 @@ async def seed_from_generator(
                 minutes=(idx * 7) % 60,
             )
             nudge_dt = due_dt + nudge_offset
-            step(
+            if not step(
                 TransitionEvent.NUDGE_SENT,
                 reasoning=(
                     "Deterministic scheduler dispatched payment reminder with Razorpay link "
@@ -372,7 +392,8 @@ async def seed_from_generator(
                 actor="agent",
                 metadata={"event": "nudge_sent", "attempt_number": 1, "channel": "whatsapp"},
                 target_dt=nudge_dt,
-            )
+            ):
+                continue
 
             # Payment after nudge without reply
             if (
@@ -400,13 +421,14 @@ async def seed_from_generator(
             # Inbound reply processing
             if inbound:
                 reply_dt = _dt(inbound.timestamp)
-                step(
+                if not step(
                     TransitionEvent.REPLY_RECEIVED,
                     reasoning=f'Inbound buyer WhatsApp reply received: "{inbound.message_text}"',
                     actor="system",
                     metadata={"event": "reply_received", "channel": "whatsapp"},
                     target_dt=reply_dt,
-                )
+                ):
+                    continue
 
                 if inbound.intent_label == "promise" or inv.promise_outcome in (
                     "pending",
@@ -416,7 +438,7 @@ async def seed_from_generator(
                     prom_dt = current_clock + timedelta(seconds=15)
                     conf = 0.90
                     promised_d = inbound.promised_date or inv.notes or str(inv.due_date)
-                    step(
+                    if step(
                         TransitionEvent.PROMISE_LOGGED,
                         reasoning=(
                             f"Zero-shot classifier extracted promise to pay by {promised_d} "
@@ -430,55 +452,57 @@ async def seed_from_generator(
                             "promised_date": str(promised_d),
                         },
                         target_dt=prom_dt,
-                    )
-
-                    if inv.promise_outcome == "kept" or inv.status == "paid":
-                        paid_dt = _dt(
-                            f"{inv.paid_date or inbound.promised_date or inv.due_date}T12:00:00"
-                        )
-                        step(
-                            TransitionEvent.PAYMENT_CONFIRMED,
-                            reasoning=(
-                                f"Payment of ₹{inv.total_amount:,.0f} settled on promised date; "
-                                "promise kept."
-                            ),
-                            actor="system",
-                            metadata={
-                                "event": "payment_confirmed",
-                                "promise_status": "kept",
-                                "amount": str(inv.total_amount),
-                            },
-                            target_dt=paid_dt,
-                        )
-                    elif inv.promise_outcome == "broken":
-                        passed_dt = _dt(
-                            f"{inbound.promised_date or inv.due_date}T10:00:00"
-                        ) + timedelta(days=1)
-                        step(
-                            TransitionEvent.PROMISE_DATE_PASSED,
-                            reasoning=(
-                                f"Promised date ({inbound.promised_date or inv.due_date}) passed "
-                                "without settlement; sent reminder."
-                            ),
-                            actor="agent",
-                            metadata={"event": "promise_date_passed"},
-                            target_dt=passed_dt,
-                        )
-                        broken_dt = current_clock + timedelta(days=3)
-                        step(
-                            TransitionEvent.PROMISE_BROKEN,
-                            reasoning=(
-                                "Grace period expired without settlement; promise marked broken "
-                                "and escalated."
-                            ),
-                            actor="agent",
-                            metadata={"event": "promise_broken", "promise_status": "broken"},
-                            target_dt=broken_dt,
-                        )
+                    ):
+                        if inv.promise_outcome == "kept" or inv.status == "paid":
+                            paid_dt = _dt(
+                                f"{inv.paid_date or inbound.promised_date or inv.due_date}T12:00:00"
+                            )
+                            step(
+                                TransitionEvent.PAYMENT_CONFIRMED,
+                                reasoning=(
+                                    f"Payment of ₹{inv.total_amount:,.0f} settled on promised "
+                                    "date; promise kept."
+                                ),
+                                actor="system",
+                                metadata={
+                                    "event": "payment_confirmed",
+                                    "promise_status": "kept",
+                                    "amount": str(inv.total_amount),
+                                },
+                                target_dt=paid_dt,
+                            )
+                        elif inv.promise_outcome == "broken":
+                            passed_dt = _dt(
+                                f"{inbound.promised_date or inv.due_date}T10:00:00"
+                            ) + timedelta(days=1)
+                            if step(
+                                TransitionEvent.PROMISE_DATE_PASSED,
+                                reasoning=(
+                                    f"Promised date ({inbound.promised_date or inv.due_date}) "
+                                    "passed without settlement; sent reminder."
+                                ),
+                                actor="agent",
+                                metadata={"event": "promise_date_passed"},
+                                target_dt=passed_dt,
+                            ):
+                                broken_dt = current_clock + timedelta(days=3)
+                                step(
+                                    TransitionEvent.PROMISE_BROKEN,
+                                    reasoning=(
+                                        "Grace period expired without settlement; "
+                                        "promise marked broken and escalated."
+                                    ),
+                                    actor="agent",
+                                    metadata={
+                                        "event": "promise_broken",
+                                        "promise_status": "broken",
+                                    },
+                                    target_dt=broken_dt,
+                                )
                 elif is_dispute or inbound.intent_label == "dispute":
                     disp_dt = current_clock + timedelta(seconds=15)
                     conf = 0.92
-                    step(
+                    if step(
                         TransitionEvent.DISPUTE_RAISED,
                         reasoning=(
                             f'Buyer indicated billing dispute: "{inbound.message_text}"; '
@@ -491,37 +515,40 @@ async def seed_from_generator(
                             "confidence": conf,
                         },
                         target_dt=disp_dt,
-                    )
-                    route_dt = current_clock + timedelta(minutes=5)
-                    step(
-                        TransitionEvent.ROUTED_TO_HUMAN,
-                        reasoning=(
-                            "Dispute routed to merchant billing desk for credit note "
-                            "or invoice review."
-                        ),
-                        actor="agent",
-                        metadata={"event": "routed_to_human"},
-                        target_dt=route_dt,
-                    )
-                    if idx % 2 == 0:
-                        res_dt = current_clock + timedelta(days=1)
-                        step(
-                            TransitionEvent.HUMAN_RESOLVED_CLOSED,
-                            reasoning=(
-                                "Merchant operator verified billing adjustment and closed dispute."
-                            ),
-                            actor="human",
-                            metadata={
-                                "event": "human_resolved_closed",
-                                "resolution": "credit_note_issued",
-                                "actor_role": "billing_manager",
-                            },
-                            target_dt=res_dt,
-                        )
+                    ):
+                        route_dt = current_clock + timedelta(minutes=5)
+                        if (
+                            step(
+                                TransitionEvent.ROUTED_TO_HUMAN,
+                                reasoning=(
+                                    "Dispute routed to merchant billing desk for credit note "
+                                    "or invoice review."
+                                ),
+                                actor="agent",
+                                metadata={"event": "routed_to_human"},
+                                target_dt=route_dt,
+                            )
+                            and idx % 2 == 0
+                        ):
+                            res_dt = current_clock + timedelta(days=1)
+                            step(
+                                TransitionEvent.HUMAN_RESOLVED_CLOSED,
+                                reasoning=(
+                                    "Merchant operator verified billing adjustment "
+                                    "and closed dispute."
+                                ),
+                                actor="human",
+                                metadata={
+                                    "event": "human_resolved_closed",
+                                    "resolution": "credit_note_issued",
+                                    "actor_role": "billing_manager",
+                                },
+                                target_dt=res_dt,
+                            )
                 elif is_opt_out or inbound.intent_label == "opt_out":
                     opt_dt = current_clock + timedelta(seconds=15)
                     conf = 0.95
-                    step(
+                    if step(
                         TransitionEvent.OPT_OUT_RECEIVED,
                         reasoning=(
                             f'Buyer requested opt-out: "{inbound.message_text}"; '
@@ -534,43 +561,45 @@ async def seed_from_generator(
                             "confidence": conf,
                         },
                         target_dt=opt_dt,
-                    )
-                    fin_dt = current_clock + timedelta(hours=1)
-                    step(
-                        TransitionEvent.OPT_OUT_FINALIZED,
-                        reasoning=(
-                            "Opt-out acknowledged and archived; automated workflow terminated."
-                        ),
-                        actor="system",
-                        metadata={"event": "opt_out_finalized"},
-                        target_dt=fin_dt,
-                    )
+                    ):
+                        fin_dt = current_clock + timedelta(hours=1)
+                        step(
+                            TransitionEvent.OPT_OUT_FINALIZED,
+                            reasoning=(
+                                "Opt-out acknowledged and archived; automated workflow terminated."
+                            ),
+                            actor="system",
+                            metadata={"event": "opt_out_finalized"},
+                            target_dt=fin_dt,
+                        )
                 elif is_ambiguous or inbound.intent_label == "ambiguous":
                     amb_dt = current_clock + timedelta(seconds=15)
                     conf = 0.45  # Below 70% threshold -> Abstention story
-                    step(
-                        TransitionEvent.NEEDS_HUMAN,
-                        reasoning=(
-                            f'Ambiguous reply: "{inbound.message_text}"; abstained below 70% '
-                            "threshold and routed to Human Review."
-                        ),
-                        actor="agent",
-                        metadata={
-                            "event": "needs_human",
-                            "intent": "ambiguous",
-                            "confidence": conf,
-                            "threshold": 0.70,
-                            "abstained": True,
-                        },
-                        target_dt=amb_dt,
-                    )
-                    if idx % 3 == 0:
+                    if (
+                        step(
+                            TransitionEvent.NEEDS_HUMAN,
+                            reasoning=(
+                                f'Ambiguous reply: "{inbound.message_text}"; abstained below 70% '
+                                "threshold and routed to Human Review."
+                            ),
+                            actor="agent",
+                            metadata={
+                                "event": "needs_human",
+                                "intent": "ambiguous",
+                                "confidence": conf,
+                                "threshold": 0.70,
+                                "abstained": True,
+                            },
+                            target_dt=amb_dt,
+                        )
+                        and idx % 3 == 0
+                    ):
                         human_dt = current_clock + timedelta(hours=4)
                         step(
                             TransitionEvent.HUMAN_RESOLVED_RECOVERED,
                             reasoning=(
-                                "Merchant operator spoke with buyer directly, verified transfer, "
-                                "and settled invoice."
+                                "Merchant operator spoke with buyer directly, "
+                                "verified transfer, and settled invoice."
                             ),
                             actor="human",
                             metadata={
