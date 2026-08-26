@@ -641,8 +641,9 @@ class DueBotDataGenerator:
                 continue
 
             buyer = buyers_by_id[inv.buyer_id]
+            nudge_delay_days = min(max(inv.days_overdue, 1), 3)
             ts = datetime.fromisoformat(inv.due_date) + timedelta(
-                days=max(inv.days_overdue, 3), hours=self.rng.randint(9, 18)
+                days=nudge_delay_days, hours=self.rng.randint(9, 17)
             )
 
             # Outbound nudge, always present for any invoice with a thread.
@@ -668,7 +669,10 @@ class DueBotDataGenerator:
                 )
             )
 
-            reply_ts = ts + timedelta(hours=self.rng.randint(1, 30))
+            reply_ts = ts + timedelta(hours=self.rng.randint(2, 24))
+            sim_now_limit = datetime(2026, 8, 21, 17, 30, 0)
+            if reply_ts > sim_now_limit:
+                reply_ts = sim_now_limit - timedelta(minutes=self.rng.randint(5, 120))
 
             if inv.edge_case == "ambiguous_reply":
                 self._append_reply(

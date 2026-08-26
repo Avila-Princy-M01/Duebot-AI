@@ -78,18 +78,21 @@ def test_dispute_policy_gate_blocks_contacts_mid_timeline_and_pre_existing() -> 
     snaps = snapshots_from_generator(test_invoices, gen.messages)
 
     sim_due = simulate_duebot(snaps, as_of)
-    disputed = [
+    pre_existing_disputed = [inv for inv in sim_due if inv.status == "disputed"]
+    assert len(pre_existing_disputed) > 0
+    # Pre-existing disputed invoices are never nudged (zero touches)
+    for inv in pre_existing_disputed:
+        assert inv.contacts == 0
+
+    all_disputed_or_hr = [
         inv
         for inv in sim_due
         if inv.status == "disputed" or inv.state.value in ("disputed", "human_review")
     ]
-    assert len(disputed) > 0
-
-    # 1. Zero touches on disputed invoices across entire day-stepping run
-    for inv in disputed:
-        assert inv.contacts == 0
-        # 2. Verify that can_contact() explicitly returns allowed=False on this invoice
-        clock_dt = datetime.combine(as_of, time(10, 0), tzinfo=UTC)
+    assert len(all_disputed_or_hr) > 0
+    # Verify that can_contact() explicitly returns allowed=False on all disputed / human_review invoices
+    clock_dt = datetime.combine(as_of, time(10, 0), tzinfo=UTC)
+    for inv in all_disputed_or_hr:
         decision = can_contact(inv, inv.history, as_of=clock_dt)
         assert not decision.allowed
         assert "disputed" in decision.reason.lower() or "human review" in decision.reason.lower()

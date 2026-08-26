@@ -1,5 +1,5 @@
-"""Test that every invoice audit trail is a strictly monotonic, connected chain
-and respects simulation timeline bounds (never dated after SIM_TODAY)."""
+"""Test that every invoice audit trail is a strictly monotonic, connected chain,
+respects simulation timeline bounds, and carries rich confidence/abstention metadata."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 async def test_audit_trail_is_connected_monotonic_chain(db_session: AsyncSession) -> None:
     """For every invoice, the chronologically-sorted audit trail must be a connected
     chain starting at 'created' and ending at the invoice's current state."""
-    await seed_from_generator(db_session, num_invoices=50, seed=42)
+    await seed_from_generator(db_session, num_invoices=60, seed=42)
     await db_session.commit()
 
     invoices_res = await db_session.execute(select(Invoice))
@@ -90,4 +90,52 @@ async def test_audit_trail_is_connected_monotonic_chain(db_session: AsyncSession
         # Trail must terminate at invoice.state
         assert trail[-1].to_state == inv.state, (
             f"Invoice {inv.invoice_id} trail ends at {trail[-1].to_state}, expected invoice.state={inv.state}"
+        )
+
+
+@pytest.mark.asyncio
+async def test_audit_confidence_abstention_and_human_oversight(
+    db_session: AsyncSession,
+) -> None:
+    """Validate that classified inbound replies emit confidence metadata, ambiguous
+    replies emit abstention events, and human reviews are attributed to actor='human'."""
+    await seed_from_generator(db_session, num_invoices=260, seed=42)
+    await db_session.commit()
+
+    audit_res = await db_session.execute(select(AuditLog))
+    all_audit = list(audit_res.scalars())
+
+    # Confidence-bearing audit rows
+    conf_rows = [a for a in all_audit if a.extra_metadata and "confidence" in a.extra_metadata]
+    assert len(conf_rows) >= 36, f"Expected >=36 confidence audit rows, found {len(conf_rows)}"
+
+    # Abstention audit rows (ambiguous buyer replies below 70% threshold)
+    abstain_rows = [
+        a for a in all_audit if a.extra_metadata and a.extra_metadata.get("abstained") is True
+    ]
+    assert len(abstain_rows) >= 6, f"Expected >=6 abstention audit rows, found {len(abstain_rows)}"
+    for row in abstain_rows:
+        assert row.to_state == "human_review"
+        assert row.extra_metadata.get("confidence") == 0.45
+        assert row.extra_metadata.get("threshold") == 0.70
+
+    # Human resolutions and oversight
+    human_rows = [a for a in all_audit if a.actor == "human"]
+    assert len(human_rows) >= 5, f"Expected >=5 actor='human' rows, found {len(human_rows)}"
+
+    # Every invoice parked in human_review must have an audit transition routing to it
+    inv_res = await db_session.execute(select(Invoice).where(Invoice.state == "human_review"))
+    hr_invoices = list(inv_res.scalars())
+    assert len(hr_invoices) > 0, "Expected invoices parked in human_review state"
+
+    for hr_inv in hr_invoices:
+        inv_audit = [a for a in all_audit if a.invoice_id == hr_inv.invoice_id]
+        has_human_route = any(
+            a.to_state == "human_review"
+            and a.extra_metadata
+            and a.extra_metadata.get("event") in ("needs_human", "routed_to_human")
+            for a in inv_audit
+        )
+        assert has_human_route, (
+            f"Invoice {hr_inv.invoice_id} in human_review lacks routing audit event"
         )
