@@ -142,6 +142,8 @@ VALID_TRANSITIONS: Mapping[InvoiceState, Mapping[TransitionEvent, InvoiceState]]
         TransitionEvent.PAYMENT_CONFIRMED: InvoiceState.RECOVERED,
     },
     InvoiceState.NUDGED: {
+        # Follow-up nudges under contact cap remain in NUDGED state
+        TransitionEvent.NUDGE_SENT: InvoiceState.NUDGED,
         TransitionEvent.REPLY_RECEIVED: InvoiceState.REPLIED,
         TransitionEvent.CONTACT_CAP_REACHED: InvoiceState.ESCALATED,
         # Payment webhook can arrive after nudge, before buyer replies

@@ -1,5 +1,12 @@
 # DueBot
 
+[![CI](https://github.com/Avila-Princy-M01/Duebot-AI/actions/workflows/ci.yml/badge.svg)](https://github.com/Avila-Princy-M01/Duebot-AI/actions/workflows/ci.yml)
+[![Type Checked: mypy strict](https://img.shields.io/badge/mypy-strict-blue.svg)](https://mypy-lang.org/)
+[![Audit: SHA--256 Verified](https://img.shields.io/badge/audit-SHA--256_verified-emerald.svg)](#cryptographically-verifiable-audit-ledger-sha-256-hash-chain)
+[![Python: 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/)
+[![Next.js: 14](https://img.shields.io/badge/Next.js-14-black.svg)](https://nextjs.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 An AI collections agent for overdue **B2B receivables**, built for the Razorpay AI Buildathon 2026 (Track 03 — AI Revenue Recovery).
 
 DueBot monitors a merchant's overdue invoices, decides **when** to nudge (WhatsApp-first, hard weekly contact caps), parses buyer replies into structured intents, tracks promise-to-pay dates, and escalates when a promise breaks or when model confidence is low. It **never moves money**. It only requests payment via Razorpay Payment Links. Every state transition is recorded in an append-only audit log.

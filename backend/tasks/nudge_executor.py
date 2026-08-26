@@ -160,31 +160,18 @@ async def execute_nudge(
     )
     interaction.delivery_status = status
 
-    if invoice.state == InvoiceState.OVERDUE.value:
+    if invoice.state in (InvoiceState.OVERDUE.value, InvoiceState.NUDGED.value):
         await apply_transition(
             session,
             invoice,
             TransitionEvent.NUDGE_SENT,
-            reasoning="outbound nudge logged and sent",
-            metadata={"attempt_number": attempt, "interaction_id": str(interaction.id)},
-        )
-    else:
-        from backend.tasks.lifecycle import append_audit
-
-        await append_audit(
-            session,
-            invoice_id=invoice.invoice_id,
-            from_state=invoice.state,
-            to_state=invoice.state,
-            actor="agent",
-            occurred_at=now,
-            reasoning_summary=f"outbound follow-up WhatsApp nudge sent (attempt #{attempt})",
-            extra_metadata={
-                "event": "nudge_sent",
+            reasoning=f"outbound WhatsApp nudge (attempt #{attempt}) logged and sent",
+            metadata={
                 "attempt_number": attempt,
                 "interaction_id": str(interaction.id),
                 "policy_version": "v1.0.0",
             },
+            occurred_at=now,
         )
     return True, decision, body
 

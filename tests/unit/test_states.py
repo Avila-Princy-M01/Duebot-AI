@@ -96,3 +96,19 @@ def test_early_payment_from_created_to_recovered() -> None:
     assert result.new_state is InvoiceState.RECOVERED
     assert result.audit_entry.from_state is InvoiceState.CREATED
     assert result.audit_entry.to_state is InvoiceState.RECOVERED
+
+
+def test_follow_up_nudge_self_transition_in_nudged_state() -> None:
+    """Follow-up nudge under contact cap legally transitions NUDGED -> NUDGED."""
+    invoice = _inv(InvoiceState.NUDGED)
+    assert is_valid_transition(InvoiceState.NUDGED, TransitionEvent.NUDGE_SENT) is True
+    result = transition(
+        invoice,
+        TransitionEvent.NUDGE_SENT,
+        reasoning="outbound follow-up WhatsApp nudge (attempt #2) sent",
+        metadata={"attempt_number": 2},
+    )
+    assert result.new_state is InvoiceState.NUDGED
+    assert result.audit_entry.from_state is InvoiceState.NUDGED
+    assert result.audit_entry.to_state is InvoiceState.NUDGED
+    assert result.audit_entry.event is TransitionEvent.NUDGE_SENT
