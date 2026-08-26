@@ -503,6 +503,7 @@ class DueBotDataGenerator:
         n_paid_during_sequence: int = 6,
         n_promise_then_silent: int = 10,
         n_disputed: int = 12,
+        n_objection: int = 8,
     ) -> None:
         """Explicitly overwrite a subset of generated invoices to guarantee each
         edge case from PART M is present in fixed, known quantities, regardless
@@ -518,6 +519,7 @@ class DueBotDataGenerator:
             + n_paid_during_sequence
             + n_promise_then_silent
             + n_disputed
+            + n_objection
         )
         overdue_pool = [
             inv for inv in self.invoices if inv.status == "overdue" and inv.edge_case == "none"
@@ -629,6 +631,12 @@ class DueBotDataGenerator:
                 "Buyer disputes the invoice; automated chasing must halt and escalate to human."
             )
 
+        # 8. Objection / Extension request -> buyer requests short extension; re-queued into nudge cycle.
+        for inv in _take(n_objection):
+            inv.edge_case = "objection_extension"
+            inv.promise_outcome = "none"
+            inv.notes = "Buyer requested short payment extension; re-queued into nudge cycle."
+
     # -- messages (promise-tracking conversation threads) ------------------------------------------------------
 
     def generate_messages(self) -> list[BuyerMessage]:
@@ -690,13 +698,19 @@ class DueBotDataGenerator:
                 )
 
             elif inv.edge_case == "promise_then_silent":
-                promised = SIM_TODAY + timedelta(days=self.rng.randint(1, 5))
+                due_d = date.fromisoformat(inv.due_date)
+                promised = min(
+                    due_d + timedelta(days=nudge_delay_days + self.rng.randint(2, 5)),
+                    SIM_TODAY - timedelta(days=5),
+                )
                 text = self.rng.choice(PROMISE_REPLIES).format(date=promised.strftime("%b %d"))
                 self._append_reply(
                     inv, buyer, reply_ts, text, "promise", promised_date=promised.isoformat()
                 )
                 # then silence: no further inbound message, only a follow-up outbound nudge later
-                followup_ts = reply_ts + timedelta(days=self.rng.randint(3, 7))
+                followup_ts = reply_ts + timedelta(days=self.rng.randint(2, 4))
+                if followup_ts > sim_now_limit:
+                    followup_ts = sim_now_limit - timedelta(minutes=self.rng.randint(1, 30))
                 self.messages.append(
                     BuyerMessage(
                         message_id=f"MSG-{uuid.uuid4().hex[:10]}",
@@ -712,6 +726,11 @@ class DueBotDataGenerator:
                     )
                 )
 
+            elif inv.edge_case == "objection_extension":
+                self._append_reply(
+                    inv, buyer, reply_ts, self.rng.choice(OBJECTION_REPLIES), "objection"
+                )
+
             elif inv.edge_case == "paid_during_nudge_sequence":
                 promised = SIM_TODAY - timedelta(days=1)
                 text = self.rng.choice(PROMISE_REPLIES).format(date="today")
@@ -720,7 +739,16 @@ class DueBotDataGenerator:
                 )
 
             elif inv.promise_outcome in ("kept", "broken", "pending"):
-                promised = SIM_TODAY + timedelta(days=self.rng.randint(-10, 7))
+                if inv.promise_outcome == "broken":
+                    due_d = date.fromisoformat(inv.due_date)
+                    promised = min(
+                        due_d + timedelta(days=nudge_delay_days + self.rng.randint(2, 5)),
+                        SIM_TODAY - timedelta(days=5),
+                    )
+                elif inv.promise_outcome == "kept":
+                    promised = SIM_TODAY - timedelta(days=self.rng.randint(1, 10))
+                else:
+                    promised = SIM_TODAY + timedelta(days=self.rng.randint(1, 7))
                 text = self.rng.choice(PROMISE_REPLIES).format(date=promised.strftime("%b %d"))
                 self._append_reply(
                     inv, buyer, reply_ts, text, "promise", promised_date=promised.isoformat()

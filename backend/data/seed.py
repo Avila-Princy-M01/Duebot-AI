@@ -508,10 +508,14 @@ async def seed_from_generator(
                                 },
                                 target_dt=paid_dt,
                             )
-                        elif inv.promise_outcome == "broken":
-                            passed_dt = _dt(
-                                f"{inbound.promised_date or inv.due_date}T10:00:00"
-                            ) + timedelta(days=1)
+                        elif (
+                            inv.promise_outcome == "broken"
+                            or inv.edge_case == "promise_then_silent"
+                        ):
+                            passed_dt = min(
+                                current_clock + timedelta(days=2),
+                                SIM_NOW - timedelta(days=2),
+                            )
                             if step(
                                 TransitionEvent.PROMISE_DATE_PASSED,
                                 reasoning=(
@@ -522,7 +526,10 @@ async def seed_from_generator(
                                 metadata={"event": "promise_date_passed"},
                                 target_dt=passed_dt,
                             ):
-                                broken_dt = current_clock + timedelta(days=3)
+                                broken_dt = min(
+                                    current_clock + timedelta(days=2),
+                                    SIM_NOW - timedelta(hours=6),
+                                )
                                 step(
                                     TransitionEvent.PROMISE_BROKEN,
                                     reasoning=(
@@ -536,6 +543,26 @@ async def seed_from_generator(
                                     },
                                     target_dt=broken_dt,
                                 )
+                                # Alternate: some escalate further to human_review,
+                                # while ~6-8 remain parked in ESCALATED for live visibility.
+                                if idx % 3 == 0:
+                                    esc_dt = min(
+                                        current_clock + timedelta(hours=4),
+                                        SIM_NOW - timedelta(minutes=15),
+                                    )
+                                    step(
+                                        TransitionEvent.ROUTED_TO_HUMAN,
+                                        reasoning=(
+                                            "Broken promise escalated to collections "
+                                            "manager review."
+                                        ),
+                                        actor="agent",
+                                        metadata={
+                                            "event": "routed_to_human",
+                                            "reason": "broken_promise",
+                                        },
+                                        target_dt=esc_dt,
+                                    )
                 elif is_dispute or inbound.intent_label == "dispute":
                     disp_dt = current_clock + timedelta(seconds=15)
                     conf = 0.92
