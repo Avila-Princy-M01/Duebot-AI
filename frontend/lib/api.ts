@@ -88,6 +88,12 @@ export async function verifyAudit(): Promise<Envelope<import("./types").AuditVer
   return request<Envelope<import("./types").AuditVerification>>("/api/audit/verify");
 }
 
+export async function checkHealth(): Promise<{ status: string }> {
+  const res = await request<Envelope<{ status: string }>>("/api/health");
+  return res.data;
+}
+
+
 export async function listBaselines(): Promise<Envelope<BaselineRow[]>> {
   return request<Envelope<BaselineRow[]>>("/api/metrics/baseline");
 }

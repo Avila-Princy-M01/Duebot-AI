@@ -10,7 +10,7 @@ export function AuditLog({ rows }: AuditLogProps) {
     <div className="glass-panel overflow-hidden rounded-3xl border border-white/[0.08]">
       <div className="overflow-x-auto">
         <table className="w-full text-left text-xs">
-          <thead className="border-b border-white/[0.08] bg-slate-900/80 text-slate-400 font-bold uppercase tracking-wider">
+          <thead className="border-b border-white/[0.08] bg-slate-900/90 text-slate-300 font-bold uppercase tracking-wider text-xs">
             <tr>
               <th className="px-4 py-3.5">Timestamp (UTC) & Hash</th>
               <th className="px-4 py-3.5">Invoice #</th>
@@ -22,7 +22,7 @@ export function AuditLog({ rows }: AuditLogProps) {
           <tbody className="divide-y divide-white/[0.06] font-sans">
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-slate-500">
+                <td colSpan={5} className="px-4 py-8 text-center text-slate-400 text-xs">
                   No audit transitions match the selected criteria.
                 </td>
               </tr>
@@ -49,38 +49,38 @@ export function AuditLog({ rows }: AuditLogProps) {
 
                 return (
                   <tr key={row.id} className="transition-colors hover:bg-white/[0.03] align-top">
-                    <td className="px-4 py-3.5 whitespace-nowrap space-y-1">
-                      <div className="font-mono text-[11px] text-slate-300 font-semibold">
+                    <td className="px-4 py-3.5 whitespace-nowrap space-y-1.5">
+                      <div className="font-mono text-xs text-slate-200 font-semibold">
                         {formatTimestamp(row.occurred_at)}
                       </div>
                       {shortHash ? (
                         <div
                           title={`Block Hash: ${row.row_hash}\nPrev Hash: ${row.prev_hash}`}
-                          className="inline-flex items-center gap-1 font-mono text-[9px] text-slate-400 bg-slate-800/80 border border-slate-700/60 rounded px-1.5 py-0.5 cursor-help hover:border-emerald-500/40 hover:text-emerald-300 transition-colors"
+                          className="inline-flex items-center gap-1 font-mono text-[11px] text-slate-300 bg-slate-800/90 border border-slate-700 rounded px-2 py-0.5 cursor-help hover:border-emerald-500/50 hover:text-emerald-300 transition-colors"
                         >
                           <span className="text-emerald-400 font-bold">#</span>
                           <span>{shortHash}</span>
                         </div>
                       ) : null}
                     </td>
-                    <td className="px-4 py-3.5 font-mono font-bold text-sky-400">
+                    <td className="px-4 py-3.5 font-mono text-xs font-bold text-sky-400">
                       <a href={`/invoices/${row.invoice_id}`} className="hover:underline">
                         {row.invoice_id}
                       </a>
                     </td>
-                    <td className="px-4 py-3.5 whitespace-nowrap space-y-1">
+                    <td className="px-4 py-3.5 whitespace-nowrap space-y-1.5">
                       <div className="inline-flex items-center gap-1.5 font-mono text-xs">
-                        <span className="rounded bg-slate-800 px-2 py-0.5 text-slate-300 font-semibold text-[10px] uppercase">
+                        <span className="rounded bg-slate-800 px-2.5 py-1 text-slate-200 font-semibold text-xs uppercase">
                           {row.from_state}
                         </span>
                         <span className="text-sky-400 font-bold">→</span>
-                        <span className="rounded bg-sky-500/20 border border-sky-500/30 px-2 py-0.5 text-sky-300 font-bold text-[10px] uppercase">
+                        <span className="rounded bg-sky-500/20 border border-sky-500/40 px-2.5 py-1 text-sky-300 font-bold text-xs uppercase">
                           {row.to_state}
                         </span>
                       </div>
                       {eventName ? (
                         <div>
-                          <span className="inline-block rounded-md bg-indigo-500/10 border border-indigo-500/20 px-1.5 py-0.5 font-mono text-[9px] font-medium text-indigo-300">
+                          <span className="inline-block rounded-md bg-indigo-500/10 border border-indigo-500/30 px-2 py-0.5 font-mono text-[11px] font-medium text-indigo-300">
                             event: {eventName}
                           </span>
                         </div>
@@ -89,12 +89,12 @@ export function AuditLog({ rows }: AuditLogProps) {
                     <td className="px-4 py-3.5">
                       <div className="space-y-1">
                         <span
-                          className={`inline-block rounded border px-2 py-0.5 text-[10px] font-extrabold uppercase ${actorBadge}`}
+                          className={`inline-block rounded border px-2.5 py-1 text-xs font-extrabold uppercase ${actorBadge}`}
                         >
                           {row.actor}
                         </span>
                         {actorRole ? (
-                          <div className="text-[9px] font-medium text-slate-400">{actorRole}</div>
+                          <div className="text-[11px] font-medium text-slate-400">{actorRole}</div>
                         ) : null}
                       </div>
                     </td>
@@ -105,22 +105,22 @@ export function AuditLog({ rows }: AuditLogProps) {
 
                       <div className="flex flex-wrap items-center gap-2 pt-0.5">
                         {policyVersion ? (
-                          <span className="rounded bg-slate-800/80 border border-slate-700/50 px-1.5 py-0.5 font-mono text-[9px] text-slate-400">
+                          <span className="rounded bg-slate-800/90 border border-slate-700/60 px-2 py-0.5 font-mono text-[11px] text-slate-300">
                             policy: {policyVersion}
                           </span>
                         ) : null}
 
                         {(confidence !== undefined && confidence !== null) ? (
-                          <span className="inline-flex items-center gap-1 rounded bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 font-mono text-[10px] font-bold text-amber-300">
+                          <span className="inline-flex items-center gap-1.5 rounded bg-amber-500/10 border border-amber-500/30 px-2.5 py-0.5 font-mono text-[11px] font-bold text-amber-300">
                             <span>Confidence: {(Number(confidence) * 100).toFixed(0)}%</span>
                             <span className="text-slate-500">|</span>
-                            <span className="text-slate-400">Threshold: 70%</span>
+                            <span className="text-slate-300">Threshold: 70%</span>
                             {Number(confidence) < 0.7 ? (
-                              <span className="ml-1 rounded bg-rose-500/20 px-1 text-rose-300 uppercase font-extrabold text-[9px]">
+                              <span className="ml-1 rounded bg-rose-500/20 px-1.5 py-0.2 text-rose-300 uppercase font-extrabold text-[10px]">
                                 Abstained
                               </span>
                             ) : (
-                              <span className="ml-1 rounded bg-emerald-500/20 px-1 text-emerald-300 uppercase font-extrabold text-[9px]">
+                              <span className="ml-1 rounded bg-emerald-500/20 px-1.5 py-0.2 text-emerald-300 uppercase font-extrabold text-[10px]">
                                 Accepted
                               </span>
                             )}
@@ -128,19 +128,19 @@ export function AuditLog({ rows }: AuditLogProps) {
                         ) : null}
 
                         {intent ? (
-                          <span className="rounded bg-slate-800 px-2 py-0.5 font-mono text-[10px] text-slate-300">
+                          <span className="rounded bg-slate-800 px-2 py-0.5 font-mono text-[11px] text-slate-300">
                             intent: <span className="text-sky-300 font-semibold">{intent}</span>
                           </span>
                         ) : null}
 
                         {promisedDate ? (
-                          <span className="rounded bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 font-mono text-[10px] text-emerald-300">
+                          <span className="rounded bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 font-mono text-[11px] text-emerald-300">
                             target: {promisedDate}
                           </span>
                         ) : null}
 
                         {resolution ? (
-                          <span className="rounded bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 font-mono text-[10px] text-purple-300">
+                          <span className="rounded bg-purple-500/10 border border-purple-500/30 px-2 py-0.5 font-mono text-[11px] text-purple-300">
                             resolution: {resolution}
                           </span>
                         ) : null}
@@ -148,7 +148,7 @@ export function AuditLog({ rows }: AuditLogProps) {
                         {shortPrev ? (
                           <span
                             title={`Previous Block Hash: ${row.prev_hash}`}
-                            className="rounded bg-slate-900 border border-slate-800 px-1.5 py-0.5 font-mono text-[9px] text-slate-500"
+                            className="rounded bg-slate-900 border border-slate-800 px-2 py-0.5 font-mono text-[11px] text-slate-400"
                           >
                             prev: {shortPrev}
                           </span>

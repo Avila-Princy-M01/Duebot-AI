@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { checkHealth } from "../../lib/api";
 
 const LINKS = [
   { href: "/", label: "Overview" },
@@ -16,6 +17,27 @@ const LINKS = [
 export function Nav() {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isHealthy, setIsHealthy] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    const verify = () => {
+      checkHealth()
+        .then(() => {
+          if (isMounted) setIsHealthy(true);
+        })
+        .catch(() => {
+          if (isMounted) setIsHealthy(false);
+        });
+    };
+
+    verify();
+    const interval = setInterval(verify, 10000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, []);
 
   return (
     <header className="sticky top-0 z-40 border-b border-white/[0.08] bg-[#050811]/75 backdrop-blur-2xl transition-all">
@@ -60,12 +82,42 @@ export function Nav() {
         </nav>
 
         <div className="flex items-center gap-3">
-          <div className="hidden sm:flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-950/40 px-3 py-1 text-xs font-medium text-emerald-400">
+          <div
+            className={`hidden sm:flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium transition-all ${
+              isHealthy === true
+                ? "border-emerald-500/30 bg-emerald-950/40 text-emerald-400"
+                : isHealthy === false
+                  ? "border-amber-500/30 bg-amber-950/40 text-amber-300"
+                  : "border-slate-700 bg-slate-800/40 text-slate-400"
+            }`}
+          >
             <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
+              <span
+                className={`absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                  isHealthy === true
+                    ? "bg-emerald-400 animate-ping"
+                    : isHealthy === false
+                      ? "bg-amber-400 animate-ping"
+                      : "bg-slate-400"
+                }`}
+              />
+              <span
+                className={`relative inline-flex h-2 w-2 rounded-full ${
+                  isHealthy === true
+                    ? "bg-emerald-500"
+                    : isHealthy === false
+                      ? "bg-amber-500"
+                      : "bg-slate-500"
+                }`}
+              />
             </span>
-            Policy Engine Active
+            <span>
+              {isHealthy === true
+                ? "Policy Engine Active"
+                : isHealthy === false
+                  ? "Backend Offline"
+                  : "Connecting..."}
+            </span>
           </div>
 
           {/* Mobile Hamburger Button */}
@@ -124,4 +176,3 @@ export function Nav() {
 }
 
 export default Nav;
-

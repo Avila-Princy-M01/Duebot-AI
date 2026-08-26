@@ -1,11 +1,21 @@
 import { BaselineComparison } from "../../components/dashboard/BaselineComparison";
 import { listBaselines } from "../../lib/api";
+import type { BaselineRow } from "../../lib/types";
 
 export default async function MetricsPage() {
-  const payload = await listBaselines();
-  const duebotRow = payload.data.find((r) => r.strategy.toLowerCase() === "duebot");
-  const naiveRow = payload.data.find((r) => r.strategy.toLowerCase() === "naive_cadence");
-  const noAgentRow = payload.data.find((r) => r.strategy.toLowerCase() === "no_agent");
+  let rows: BaselineRow[] = [];
+  let error: string | null = null;
+
+  try {
+    const payload = await listBaselines();
+    rows = payload?.data ?? [];
+  } catch (exc) {
+    error = exc instanceof Error ? exc.message : "Failed to load baseline benchmarks";
+  }
+
+  const duebotRow = rows.find((r) => r.strategy.toLowerCase() === "duebot");
+  const naiveRow = rows.find((r) => r.strategy.toLowerCase() === "naive_cadence");
+  const noAgentRow = rows.find((r) => r.strategy.toLowerCase() === "no_agent");
 
   const contactReductionPct =
     duebotRow && naiveRow && naiveRow.total_contacts_sent > 0
@@ -29,7 +39,7 @@ export default async function MetricsPage() {
     <div className="space-y-6">
       <div className="glass-panel relative overflow-hidden rounded-3xl p-6 sm:p-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between shadow-xl">
         <div className="max-w-2xl space-y-1.5">
-          <div className="inline-flex items-center gap-2 rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-0.5 text-[11px] font-bold text-sky-300">
+          <div className="inline-flex items-center gap-2 rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-0.5 text-xs font-bold text-sky-300">
             <span>Rigorous Benchmark Evaluation</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">Strategy Baseline Performance</h1>
@@ -68,7 +78,16 @@ export default async function MetricsPage() {
         </div>
       </div>
 
-      <BaselineComparison rows={payload.data} />
+      {error ? (
+        <div className="rounded-2xl border border-amber-500/40 bg-amber-950/30 p-5 text-xs text-amber-200 backdrop-blur-md" role="alert">
+          <p className="font-bold">{error}</p>
+          <p className="mt-1 text-slate-400">
+            Please make sure the backend is running and the database is seeded (`scripts/seed_db.py`).
+          </p>
+        </div>
+      ) : null}
+
+      <BaselineComparison rows={rows} />
     </div>
   );
 }
