@@ -630,22 +630,25 @@ async def seed_from_generator(
                     conf = 0.45  # Below 70% threshold -> Abstention story
                     # All ambiguous replies reach HUMAN_REVIEW — no idx gate on the route step.
                     # ~half resolve (even idx); odd idx stays parked in human_review for the demo.
-                    if step(
-                        TransitionEvent.NEEDS_HUMAN,
-                        reasoning=(
-                            f'Ambiguous reply: "{inbound.message_text}"; abstained below 70% '
-                            "threshold and routed to Human Review."
-                        ),
-                        actor="agent",
-                        metadata={
-                            "event": "needs_human",
-                            "intent": "ambiguous",
-                            "confidence": conf,
-                            "threshold": 0.70,
-                            "abstained": True,
-                        },
-                        target_dt=amb_dt,
-                    ) and idx % 2 == 0:
+                    if (
+                        step(
+                            TransitionEvent.NEEDS_HUMAN,
+                            reasoning=(
+                                f'Ambiguous reply: "{inbound.message_text}"; abstained below 70% '
+                                "threshold and routed to Human Review."
+                            ),
+                            actor="agent",
+                            metadata={
+                                "event": "needs_human",
+                                "intent": "ambiguous",
+                                "confidence": conf,
+                                "threshold": 0.70,
+                                "abstained": True,
+                            },
+                            target_dt=amb_dt,
+                        )
+                        and idx % 2 == 0
+                    ):
                         human_dt = current_clock + timedelta(hours=4)
                         step(
                             TransitionEvent.HUMAN_RESOLVED_RECOVERED,

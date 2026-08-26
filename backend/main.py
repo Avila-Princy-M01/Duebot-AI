@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -51,10 +52,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     if poll_task is not None:
         poll_task.cancel()
-        try:
+        with contextlib.suppress(asyncio.CancelledError):
             await poll_task
-        except asyncio.CancelledError:
-            pass
         logger.info("poller_stopped")
 
     await engine.dispose()

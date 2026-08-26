@@ -27,7 +27,6 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -139,13 +138,17 @@ async def test_resolve_recovered_happy_path(
 
         # Verify audit row
         audit_rows = (
-            await session.execute(
-                select(AuditLog)
-                .where(AuditLog.invoice_id == inv_id)
-                .order_by(AuditLog.occurred_at.desc())
-                .limit(1)
+            (
+                await session.execute(
+                    select(AuditLog)
+                    .where(AuditLog.invoice_id == inv_id)
+                    .order_by(AuditLog.occurred_at.desc())
+                    .limit(1)
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         assert len(audit_rows) == 1
         row = audit_rows[0]
         assert row.from_state == "human_review"
