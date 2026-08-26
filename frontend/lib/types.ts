@@ -35,6 +35,7 @@ export interface InvoiceRow {
   split: string;
   edge_case: string;
   payment_link_id: string | null;
+  would_have_paid_without_intervention?: boolean | null;
 }
 
 export interface InteractionRow {
