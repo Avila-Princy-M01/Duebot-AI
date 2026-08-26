@@ -72,6 +72,7 @@ python -m backend.data.generator --num-invoices 260 --seed 42
 | GET | `/api/nudge/preview/{id}` | Read-only policy & draft preview |
 | GET | `/api/promises` | Promise-to-pay commitment tracker |
 | GET | `/api/audit` | Append-only state transition audit log |
+| GET | `/api/audit/verify` | **Cryptographic SHA-256 chain integrity verification & tamper detection** |
 | GET | `/api/metrics/recovery` | Live database recovery metrics |
 | GET | `/api/metrics/baseline` | Three-way baseline evaluation metrics |
 | POST | `/api/webhooks/razorpay` | Razorpay payment link status webhook |
@@ -79,6 +80,67 @@ python -m backend.data.generator --num-invoices 260 --seed 42
 | POST | `/api/seed` | Reset & seed database from generator |
 
 All responses return standard envelopes: `{"data": ..., "meta": {"timestamp", "request_id", "total_count"}}`.
+
+---
+
+## Cryptographically Verifiable Audit Ledger (SHA-256 Hash Chain)
+
+In autonomous financial systems, an "append-only log" is an empty promise unless its integrity can be mathematically proven. DueBot binds every state transition, policy decision, model confidence score, and human override into an unbroken **cryptographic SHA-256 hash chain**.
+
+### 1. Canonical Row Hashing Formula
+Every block calculates its `row_hash` as the SHA-256 digest of a strictly canonicalized JSON string containing its fields and the previous block's hash:
+
+$$\text{row\_hash}_i = \text{SHA-256}\Big(\text{canonical\_json}\big(\text{actor}_i, \text{from\_state}_i, \text{invoice\_id}_i, \text{metadata}_i, \text{occurred\_at}_i, \text{prev\_hash}_i, \text{reasoning}_i, \text{to\_state}_i\big)\Big)$$
+
+Where `canonical_json` serializes the dictionary with sorted keys, ISO-8601 UTC timestamps, and compact separators (`","`, `":"`):
+
+```python
+canonical_payload = {
+    "actor": "agent",
+    "from_state": "replied",
+    "invoice_id": "INV-15c3c85ca6",
+    "metadata": "{\"abstained\":true,\"confidence\":0.45,\"event\":\"needs_human\",\"threshold\":0.7}",
+    "occurred_at": "2026-08-21T14:30:15Z",
+    "prev_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "reasoning_summary": "Ambiguous reply: 'will check soon'; abstained below 70% threshold.",
+    "to_state": "human_review"
+}
+```
+
+### 2. Live Verification Endpoint (`GET /api/audit/verify`)
+Auditors, merchants, and compliance systems can verify the entire historical log at any time with a single API call:
+
+```json
+{
+  "data": {
+    "valid": true,
+    "rows_verified": 492,
+    "genesis_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "latest_hash": "f8a92b3c1097e8894df07a4a1599d284a1e967a188bcde190a424263f350c761",
+    "verified_at": "2026-08-26T16:38:00Z",
+    "error": null
+  },
+  "meta": {
+    "timestamp": "2026-08-26T16:38:00Z",
+    "request_id": "req-verify-001"
+  }
+}
+```
+
+### 3. Real-Time Tamper-Detection Guarantee
+If a rogue actor or database bug modifies even a single character — e.g. altering `confidence: 0.45` to `0.95` to bypass human review or forging payment confirmation — the SHA-256 hash avalanche immediately breaks the chain. `GET /api/audit/verify` pinpoints the exact tampered row:
+
+```json
+{
+  "data": {
+    "valid": false,
+    "rows_verified": 142,
+    "latest_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "error": "Tampered row at block 142 (invoice INV-15c3c85ca6): expected hash 8f4a1c..., stored 9b2d3e..."
+  }
+}
+```
+In the UI (`/audit`), the live status indicator instantly flips from **`Chain Verified ✓` (Emerald)** to **`Tampering Detected ✗` (Red)**, making historical audits non-repudiable.
 
 ---
 
@@ -121,9 +183,10 @@ Reproducible via `python scripts/run_eval.py` and `python scripts/run_multi_seed
 ## Merchant Dashboard & UI Features
 
 - **Invoices & Aging**: Dynamic filtering by bucket (0-30, 31-60, 61-90, 90+ days), risk score, and lifecycle state.
-- **Invoice Timeline**: Complete interaction history, outbound nudges, and state transitions.
-- **Append-Only Audit Viewer**: Full immutability for compliance and accounting.
-- **Simulated WhatsApp Inbox**: Live interactive interface for evaluating promise extraction and human fallback routing.
+- **Invoice Timeline & Human Review Panel**: Complete interaction history, elevated human-review resolution desk with mandatory reasoning log, and state transitions.
+- **Cryptographic Audit Proof Inspector (`/audit`)**: Real-time SHA-256 hash chain verification with one-click tamper detection, block inspector, and state transition causality explorer.
+- **Simulated WhatsApp Inbox (`/inbox`)**: Live interactive interface for evaluating zero-shot promise extraction, low-confidence abstention (<70%), and human fallback routing.
+- **Three-Way Baseline Benchmark (`/metrics`)**: Empirical comparison across 10 generator seeds displaying incremental cash recovery (+4.9pp) and spam touch reduction (-61.5%).
 - **Optional Voice Briefing**: Interactive voice briefing using browser Web Speech API & LLM synthesis for hands-free merchant portfolio review.
 
 ---
