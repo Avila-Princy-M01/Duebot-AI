@@ -24,7 +24,7 @@ async def list_audit(
     to_state: str | None = None,
     date_from: datetime | None = None,
     date_to: datetime | None = None,
-    limit: int = Query(default=50, ge=1, le=200),
+    limit: int = Query(default=50, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
     session: AsyncSession = Depends(get_db),
 ) -> SuccessEnvelope[list[AuditEntryOut]]:
@@ -32,8 +32,9 @@ async def list_audit(
     stmt = select(AuditLog)
     count_stmt = select(func.count()).select_from(AuditLog)
     if invoice_id:
-        stmt = stmt.where(AuditLog.invoice_id == invoice_id)
-        count_stmt = count_stmt.where(AuditLog.invoice_id == invoice_id)
+        clean_id = invoice_id.strip()
+        stmt = stmt.where(AuditLog.invoice_id.ilike(f"%{clean_id}%"))
+        count_stmt = count_stmt.where(AuditLog.invoice_id.ilike(f"%{clean_id}%"))
     if actor:
         stmt = stmt.where(AuditLog.actor == actor)
         count_stmt = count_stmt.where(AuditLog.actor == actor)
