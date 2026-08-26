@@ -80,20 +80,20 @@ RELIABILITY_TIERS: dict[str, dict[str, Any]] = {
     "reliable": {
         "weight": 0.70,
         "on_time_rate": (0.85, 0.98),  # sampled range for on_time_payment_rate
-        "p_pay_on_time": 0.62,
+        "p_pay_on_time": 0.58,
         "p_pay_late": 0.28,  # pays, but after due date
-        "p_still_open": 0.09,
-        "p_dispute": 0.01,
+        "p_still_open": 0.10,
+        "p_dispute": 0.04,  # raised from 0.01 so disputes appear organically
         "late_days_range": (1, 20),
         "self_cure_prob": 0.75,  # would pay anyway, even without a nudge
     },
     "occasional_late": {
         "weight": 0.20,
         "on_time_rate": (0.50, 0.80),
-        "p_pay_on_time": 0.22,
-        "p_pay_late": 0.43,
-        "p_still_open": 0.32,
-        "p_dispute": 0.03,
+        "p_pay_on_time": 0.20,
+        "p_pay_late": 0.42,
+        "p_still_open": 0.30,
+        "p_dispute": 0.08,  # raised from 0.03
         "late_days_range": (5, 45),
         "self_cure_prob": 0.45,
     },
@@ -101,9 +101,9 @@ RELIABILITY_TIERS: dict[str, dict[str, Any]] = {
         "weight": 0.10,
         "on_time_rate": (0.15, 0.45),
         "p_pay_on_time": 0.05,
-        "p_pay_late": 0.35,
-        "p_still_open": 0.53,
-        "p_dispute": 0.07,
+        "p_pay_late": 0.33,
+        "p_still_open": 0.50,
+        "p_dispute": 0.12,  # raised from 0.07
         "late_days_range": (15, 95),
         "self_cure_prob": 0.20,
     },
@@ -496,13 +496,13 @@ class DueBotDataGenerator:
 
     def inject_edge_cases(
         self,
-        n_ambiguous: int = 6,
-        n_opt_out: int = 3,
+        n_ambiguous: int = 10,
+        n_opt_out: int = 8,
         n_duplicate_pairs: int = 3,
         n_partial: int = 8,
         n_paid_during_sequence: int = 6,
-        n_promise_then_silent: int = 6,
-        n_disputed: int = 6,
+        n_promise_then_silent: int = 10,
+        n_disputed: int = 12,
     ) -> None:
         """Explicitly overwrite a subset of generated invoices to guarantee each
         edge case from PART M is present in fixed, known quantities, regardless

@@ -6,9 +6,10 @@ import { seedDemo } from "../../lib/api";
 
 interface SeedButtonProps {
   label?: string;
+  onSeeded?: () => void;
 }
 
-export function SeedButton({ label = "Seed Synthetic Batch" }: SeedButtonProps) {
+export function SeedButton({ label = "Seed Synthetic Batch", onSeeded }: SeedButtonProps) {
   const router = useRouter();
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -28,6 +29,7 @@ export function SeedButton({ label = "Seed Synthetic Batch" }: SeedButtonProps) 
             .then((result) => {
               setMessage(`Successfully seeded ${result.data.invoices} invoices & ${result.data.buyers} buyers!`);
               setBusy(false);
+              if (onSeeded) onSeeded();
               router.refresh();
             })
             .catch((err: unknown) => {

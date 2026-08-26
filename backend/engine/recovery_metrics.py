@@ -21,6 +21,7 @@ __all__ = [
     "MetricInvoice",
     "RecoveryReport",
     "recovery_rate",
+    "attributed_recovery_rate",
     "promise_kept_rate",
     "false_escalation_rate",
     "recovery_report",
@@ -62,6 +63,17 @@ class RecoveryReport:
     false_escalation_rate: float
     total_contacts_sent: int
     recovery_per_contact: float = 0.0
+    # Attribution split -------------------------------------------------------
+    # baseline_recovered_count: buyers who would have paid without any outreach
+    # (would_have_paid_without_intervention == True). DueBot gets no credit here.
+    baseline_recovered_count: int = 0
+    # duebot_attributed_recovered_count: buyers who recovered and were NOT
+    # ground-truth self-curers — DueBot's outreach drove the outcome.
+    duebot_attributed_recovered_count: int = 0
+    # Rates as share of total eval batch (not just recovered subset) so the
+    # two numbers sum to recovery_rate and are directly comparable.
+    baseline_recovery_rate: float = 0.0
+    duebot_attributed_recovery_rate: float = 0.0
 
 
 def _is_recovered(invoice: MetricInvoice) -> bool:
@@ -83,6 +95,41 @@ def recovery_rate(invoices: Sequence[MetricInvoice]) -> float:
         Decimal("0"),
     )
     return float(recovered / total)
+
+
+def attributed_recovery_rate(invoices: Sequence[MetricInvoice]) -> tuple[float, float]:
+    """Split the overall recovery rate into baseline vs DueBot-attributed shares.
+
+    Returns:
+        (baseline_rate, duebot_attributed_rate) both as share of total batch value.
+
+    Attribution rules:
+        Baseline — RECOVERED and ``would_have_paid_without_intervention is True``.
+            These buyers would have settled regardless of outreach; counted as
+            organic self-cures, not a DueBot win.
+        DueBot-attributed — RECOVERED and ``would_have_paid_without_intervention``
+            is ``False`` or ``None`` (label absent on pre-due-date payers and
+            disputed invoices, which have no self-cure expectation).
+            DueBot's outreach — nudge, promise extraction, or human routing —
+            drove the outcome.
+
+    The two rates sum to ``recovery_rate(invoices)``.
+    """
+    total = sum((inv.total_amount for inv in invoices), Decimal("0"))
+    if total == 0:
+        return 0.0, 0.0
+
+    baseline = Decimal("0")
+    attributed = Decimal("0")
+    for inv in invoices:
+        if not _is_recovered(inv):
+            continue
+        if inv.would_have_paid_without_intervention is True:
+            baseline += inv.total_amount
+        else:
+            attributed += inv.total_amount
+
+    return float(baseline / total), float(attributed / total)
 
 
 def promise_kept_rate(invoices: Sequence[MetricInvoice]) -> float:
@@ -148,6 +195,13 @@ def recovery_report(
         delays.append(max((paid_on - inv.due_date).days, 0))
     avg_days = float(sum(delays) / len(delays)) if delays else 0.0
     rpc = float(recovered_value / Decimal(total_contacts_sent)) if total_contacts_sent > 0 else 0.0
+
+    baseline_count = sum(
+        1 for inv in recovered_invoices if inv.would_have_paid_without_intervention is True
+    )
+    attributed_count = len(recovered_invoices) - baseline_count
+    baseline_rate, attributed_rate = attributed_recovery_rate(invoices)
+
     return RecoveryReport(
         eval_set_size=len(invoices),
         recovered_count=len(recovered_invoices),
@@ -162,4 +216,8 @@ def recovery_report(
         false_escalation_rate=false_escalation_rate(invoices),
         total_contacts_sent=total_contacts_sent,
         recovery_per_contact=rpc,
+        baseline_recovered_count=baseline_count,
+        duebot_attributed_recovered_count=attributed_count,
+        baseline_recovery_rate=baseline_rate,
+        duebot_attributed_recovery_rate=attributed_rate,
     )

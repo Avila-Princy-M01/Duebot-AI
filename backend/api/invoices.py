@@ -1,12 +1,14 @@
-"""Invoice list, detail, and CSV ingest."""
+"""Invoice list, detail, CSV ingest, and human-review resolution."""
 
 from __future__ import annotations
 
 import csv
 import io
 from datetime import date
+from typing import Literal
 
 from fastapi import APIRouter, Depends, File, Query, UploadFile
+from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -18,7 +20,8 @@ from backend.data.csv_mapper import (
     parse_optional_date,
 )
 from backend.dependencies import get_db
-from backend.exceptions import NotFoundError
+from backend.engine.states import InvoiceState, TransitionEvent
+from backend.exceptions import NotFoundError, PolicyBlockedError
 from backend.models.buyer import Buyer
 from backend.models.invoice import Invoice
 from backend.models.merchant import Merchant
@@ -30,6 +33,7 @@ from backend.schemas.invoice import (
     InvoiceOut,
     PromiseOutLite,
 )
+from backend.tasks.lifecycle import apply_transition
 
 router = APIRouter(prefix="/invoices", tags=["invoices"])
 
@@ -111,6 +115,90 @@ async def get_invoice(
             interactions=[InteractionOut.model_validate(row) for row in invoice.interactions],
             promises=[PromiseOutLite.model_validate(row) for row in invoice.promises],
             audit=[AuditOutLite.model_validate(row) for row in invoice.audit_entries],
+        )
+    )
+
+
+# ---------------------------------------------------------------------------
+# Human-review resolution
+# ---------------------------------------------------------------------------
+
+
+class ResolveRequest(BaseModel):
+    """Body for POST /api/invoices/{id}/resolve."""
+
+    resolution: Literal["recovered", "closed"] = Field(
+        description=(
+            '"recovered" — merchant confirmed payment / resolved in buyer\'s favour; '
+            '"closed" — dispute confirmed or invoice written off.'
+        )
+    )
+    reasoning: str = Field(
+        min_length=5,
+        max_length=500,
+        description="One sentence the merchant operator writes explaining the decision.",
+    )
+
+
+class ResolveOut(BaseModel):
+    """Response body for a successful resolve action."""
+
+    invoice_id: str
+    previous_state: str
+    new_state: str
+    resolution: str
+
+
+@router.post("/{invoice_id}/resolve")
+async def resolve_human_review(
+    invoice_id: str,
+    body: ResolveRequest,
+    session: AsyncSession = Depends(get_db),
+) -> SuccessEnvelope[ResolveOut]:
+    """Resolve an invoice that is parked in the HUMAN_REVIEW queue.
+
+    Only valid when the invoice is in the ``human_review`` state.  Any other
+    state returns 409 (the state machine would raise ``InvalidTransitionError``
+    which the global handler converts to 400, but we surface a clearer message
+    here before attempting the transition).
+
+    ``resolution="recovered"`` fires ``HUMAN_RESOLVED_RECOVERED`` → ``RECOVERED``.
+    ``resolution="closed"``    fires ``HUMAN_RESOLVED_CLOSED``    → ``TERMINATED``.
+    """
+    invoice = await session.get(Invoice, invoice_id)
+    if invoice is None:
+        raise NotFoundError(f"invoice {invoice_id} not found")
+
+    if invoice.state != InvoiceState.HUMAN_REVIEW.value:
+        raise PolicyBlockedError(
+            f"invoice {invoice_id} is in state '{invoice.state}', not 'human_review'; "
+            "resolve is only valid from human_review"
+        )
+
+    previous_state = invoice.state
+
+    event = (
+        TransitionEvent.HUMAN_RESOLVED_RECOVERED
+        if body.resolution == "recovered"
+        else TransitionEvent.HUMAN_RESOLVED_CLOSED
+    )
+
+    await apply_transition(
+        session,
+        invoice,
+        event,
+        reasoning=body.reasoning,
+        actor="human",
+        metadata={"resolution": body.resolution, "actor_role": "merchant_operator"},
+    )
+    await session.commit()
+
+    return SuccessEnvelope(
+        data=ResolveOut(
+            invoice_id=invoice_id,
+            previous_state=previous_state,
+            new_state=invoice.state,
+            resolution=body.resolution,
         )
     )
 

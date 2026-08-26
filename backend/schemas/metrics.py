@@ -24,6 +24,11 @@ class RecoveryMetricsOut(BaseModel):
     promise_kept_rate: float
     false_escalation_rate: float
     total_contacts_sent: int
+    recovery_per_contact: float
+    baseline_recovered_count: int
+    duebot_attributed_recovered_count: int
+    baseline_recovery_rate: float
+    duebot_attributed_recovery_rate: float
     split: str
 
 

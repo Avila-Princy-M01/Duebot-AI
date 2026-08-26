@@ -51,6 +51,11 @@ class Settings(BaseSettings):
     max_contacts_per_week: int = Field(default=3)
     confidence_threshold: float = Field(default=0.7)
 
+    # Set ENABLE_POLLER=true to run the aging/nudge/promise cycle inside the
+    # FastAPI process instead of as a separate `python -m backend.tasks.poller`.
+    # Default off so tests and one-off scripts don't start background tasks.
+    enable_poller: bool = Field(default=False)
+
     log_level: str = Field(default="INFO")
 
     @property

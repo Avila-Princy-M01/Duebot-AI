@@ -63,6 +63,41 @@ async def test_audit_cryptographic_chain_detects_tampering(db_session: AsyncSess
 
 
 @pytest.mark.asyncio
+async def test_audit_cryptographic_chain_detects_metadata_tampering(
+    db_session: AsyncSession,
+) -> None:
+    """Tampering with metadata fields (such as confidence score or intent) must break chain verification."""
+    await seed_from_generator(db_session, num_invoices=20, seed=42)
+    await db_session.commit()
+
+    rows = await db_session.execute(
+        select(AuditLog).order_by(AuditLog.occurred_at.asc(), AuditLog.id.asc())
+    )
+    all_rows = list(rows.scalars())
+    assert len(all_rows) >= 2
+
+    # Find a row with metadata
+    target_idx = 0
+    original_meta = all_rows[target_idx].extra_metadata
+    all_rows[target_idx].extra_metadata = {
+        **(original_meta or {}),
+        "confidence": 0.99,  # Forged confidence to bypass abstention
+    }
+
+    is_valid, count_verified, _, error_msg = verify_chain(all_rows)
+    assert is_valid is False
+    assert count_verified == target_idx
+    assert error_msg is not None
+    assert f"Tampered row at block {target_idx}" in error_msg
+
+    # Restore and verify it passes again
+    all_rows[target_idx].extra_metadata = original_meta
+    is_valid_restored, count_restored, _, _ = verify_chain(all_rows)
+    assert is_valid_restored is True
+    assert count_restored == len(all_rows)
+
+
+@pytest.mark.asyncio
 async def test_audit_chain_validity_after_consecutive_nudges(
     client: AsyncClient,
     db_session: AsyncSession,

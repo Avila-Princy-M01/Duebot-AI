@@ -123,6 +123,17 @@ export async function injectReply(invoiceId: string, text: string): Promise<Enve
   });
 }
 
+export async function resolveInvoice(
+  invoiceId: string,
+  resolution: "recovered" | "closed",
+  reasoning: string,
+): Promise<Envelope<{ invoice_id: string; previous_state: string; new_state: string; resolution: string }>> {
+  return request(`/api/invoices/${invoiceId}/resolve`, {
+    method: "POST",
+    body: JSON.stringify({ resolution, reasoning }),
+  });
+}
+
 export async function seedDemo(): Promise<Envelope<Record<string, number>>> {
   return request("/api/seed?num_invoices=80&seed=42", { method: "POST" });
 }

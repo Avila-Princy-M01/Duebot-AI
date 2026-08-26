@@ -4,6 +4,40 @@ A complete, word-for-word teleprompter script and UI shot list for recording the
 
 ---
 
+## ⚙️ Pre-Demo Setup (do this before recording)
+
+```bash
+# 1. Copy and fill in credentials
+cp .env.example .env
+# Set ANTHROPIC_API_KEY or GEMINI_API_KEY for live reply parsing.
+# Set RAZORPAY_WEBHOOK_SECRET if demoing the live payment webhook.
+
+# 2. Enable the background poller so the demo shows autonomous lifecycle progression.
+#    The poller runs aging → promise → nudge → reply every 30 seconds inside the API process.
+echo "ENABLE_POLLER=true" >> .env
+
+# 3. Seed the database
+python scripts/seed_db.py
+
+# 4. Start the API (poller starts automatically with ENABLE_POLLER=true)
+uvicorn backend.main:app --reload
+
+# 5. Start the frontend
+cd frontend && npm run dev
+
+# 6. (Optional) Live Razorpay webhook — needs a public URL
+#    ngrok http 8000
+#    Paste the ngrok URL + /api/webhooks/razorpay into your Razorpay test dashboard.
+```
+
+> **Note on WhatsApp transport:** The demo uses DueBot's built-in `SimulatedInbox`. All policy
+> gates, idempotency guards, and log-before-send sequencing are exercised against the simulator.
+> The `WhatsAppSender` interface is identical to what a real WABA adapter would consume —
+> the policy gate requires a typed `PolicyDecision` object, not a boolean, so it cannot be
+> bypassed regardless of transport.
+
+---
+
 ## 🎬 Shot 1: The Problem & The Non-Custodial Boundary (0:00 – 0:30)
 
 **On-Screen Action:**
@@ -60,6 +94,22 @@ A complete, word-for-word teleprompter script and UI shot list for recording the
 > *A naive AI treats this as a payment promise, snoozes the invoice, and allows the receivable to age out. DueBot uses structured tool-calling with a hard confidence threshold of 0.70. Because no specific date or commitment was made, the parser marks confidence below threshold. The deterministic state machine intercepts this and transitions the invoice to `HUMAN_REVIEW`.*
 >
 > *DueBot knows when to speak, when to pause, and critically — when to admit it does not know and route to a human."*
+
+---
+
+## 🎬 Shot 4b: The Human Review Queue — Closing the Loop (3:00 – 3:30)
+
+**On-Screen Action:**
+- Stay on the same invoice detail page, now in `human_review` state.
+- Scroll to the amber **"Human Review Required"** panel.
+- Type a reasoning note: `"Spoke with buyer directly — confirmed NEFT on the way, marking recovered."`.
+- Click **"✓ Mark Recovered"**.
+- Show the page refresh: state changes to `recovered`, the amber panel disappears, the audit timeline gains a new `human_review → recovered` row with `actor: human`.
+
+**Spoken Script (Word-for-Word):**
+> *"When an invoice parks in the human review queue, it is not a black hole. The merchant operator sees the full conversation context, the abstention reason, and the confidence score right here. They write a one-sentence note — this is mandatory and gets written into the cryptographic audit chain — then click 'Mark Recovered' or 'Close'.*
+>
+> *Watch the state machine advance: `human_review → recovered`, actor logged as `human`, reasoning preserved verbatim. The invoice is now settled and every decision is traceable. No silent database updates, no guessed outcomes — just a clean, auditable handoff from agent to operator and back."*
 
 ---
 

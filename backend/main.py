@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
+import structlog
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -17,10 +19,12 @@ from backend.exceptions import DueBotError, NotFoundError, PolicyBlockedError
 from backend.logging_util import configure_logging
 from backend.schemas.common import ErrorBody, ErrorEnvelope
 
+logger = structlog.get_logger("duebot.main")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    """Create the engine and (for SQLite/dev) create tables."""
+    """Create the engine, optionally start the background poll loop."""
     settings = get_settings()
     configure_logging(settings.log_level)
     engine = create_engine(settings)
@@ -29,7 +33,30 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     if settings.database_url.startswith("sqlite"):
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
+
+    poll_task: asyncio.Task[None] | None = None
+    if settings.enable_poller:
+        from backend.tasks.poller import main as poller_main
+
+        poll_task = asyncio.create_task(poller_main(), name="duebot-poller")
+
+        def _on_poller_done(task: asyncio.Task[None]) -> None:
+            if not task.cancelled() and (exc := task.exception()):
+                logger.error("poller_died_unexpectedly", error=str(exc))
+
+        poll_task.add_done_callback(_on_poller_done)
+        logger.info("poller_started", interval_seconds=30)
+
     yield
+
+    if poll_task is not None:
+        poll_task.cancel()
+        try:
+            await poll_task
+        except asyncio.CancelledError:
+            pass
+        logger.info("poller_stopped")
+
     await engine.dispose()
 
 

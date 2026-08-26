@@ -7,7 +7,7 @@ from decimal import Decimal
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.data.baselines import (
@@ -23,6 +23,7 @@ from backend.dependencies import get_db
 from backend.engine.recovery_metrics import recovery_report
 from backend.engine.states import InvoiceState
 from backend.models.baseline import BaselineComparison
+from backend.models.interaction import Interaction
 from backend.models.invoice import Invoice
 from backend.schemas.common import SuccessEnvelope
 from backend.schemas.metrics import BaselineRowOut, RecoveryMetricsOut
@@ -52,8 +53,21 @@ async def recovery_metrics(
     today = as_of or date.today()
     result = await session.execute(select(Invoice).where(Invoice.split == split))
     invoices = list(result.scalars())
+    invoice_ids = [inv.invoice_id for inv in invoices]
+
+    # Count outbound contacts actually sent for this split's invoice set.
+    contacts_result = await session.execute(
+        select(func.count())
+        .select_from(Interaction)
+        .where(
+            Interaction.direction == "outbound",
+            Interaction.invoice_id.in_(invoice_ids),
+        )
+    )
+    total_contacts = int(contacts_result.scalar_one() or 0)
+
     wrapped = [_MetricInv(inv) for inv in invoices]
-    report = recovery_report(wrapped, as_of=today, total_contacts_sent=0)
+    report = recovery_report(wrapped, as_of=today, total_contacts_sent=total_contacts)
     return SuccessEnvelope(
         data=RecoveryMetricsOut(
             eval_set_size=report.eval_set_size,
@@ -68,6 +82,11 @@ async def recovery_metrics(
             promise_kept_rate=report.promise_kept_rate,
             false_escalation_rate=report.false_escalation_rate,
             total_contacts_sent=report.total_contacts_sent,
+            recovery_per_contact=report.recovery_per_contact,
+            baseline_recovered_count=report.baseline_recovered_count,
+            duebot_attributed_recovered_count=report.duebot_attributed_recovered_count,
+            baseline_recovery_rate=report.baseline_recovery_rate,
+            duebot_attributed_recovery_rate=report.duebot_attributed_recovery_rate,
             split=split,
         )
     )

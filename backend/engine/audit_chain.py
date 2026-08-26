@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
@@ -19,22 +20,21 @@ def compute_row_hash(
     from_state: str,
     to_state: str,
     actor: str,
-    occurred_at: str | datetime,
+    occurred_at: datetime,
     reasoning_summary: str,
     prev_hash: str,
+    extra_metadata: Mapping[str, Any] | None = None,
 ) -> str:
     """Compute deterministic canonical SHA-256 hash over an audit transition block."""
-    if isinstance(occurred_at, datetime):
-        if occurred_at.tzinfo is None:
-            occurred_at = occurred_at.replace(tzinfo=UTC)
-        iso_time = occurred_at.isoformat()
-    else:
-        iso_time = str(occurred_at)
+    if occurred_at.tzinfo is None:
+        occurred_at = occurred_at.replace(tzinfo=UTC)
+    iso_time = occurred_at.isoformat()
 
     canonical_dict: dict[str, Any] = {
         "actor": str(actor),
         "from_state": str(from_state),
         "invoice_id": str(invoice_id),
+        "metadata": json.dumps(extra_metadata or {}, sort_keys=True, separators=(",", ":")),
         "occurred_at": iso_time,
         "prev_hash": str(prev_hash or GENESIS_HASH),
         "reasoning_summary": str(reasoning_summary),
@@ -73,6 +73,7 @@ def verify_chain(rows: list[AuditLog]) -> tuple[bool, int, str, str | None]:
             occurred_at=row.occurred_at,
             reasoning_summary=row.reasoning_summary,
             prev_hash=row.prev_hash,
+            extra_metadata=row.extra_metadata,
         )
         if computed != row.row_hash:
             return (

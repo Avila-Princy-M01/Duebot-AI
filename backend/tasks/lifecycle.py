@@ -53,6 +53,7 @@ async def append_audit(
         occurred_at=actual_dt,
         reasoning_summary=reasoning_summary,
         prev_hash=latest_prev,
+        extra_metadata=extra_metadata,
     )
 
     log_entry = AuditLog(

@@ -53,11 +53,16 @@ async def run_once() -> None:
 
 
 async def main() -> None:
-    """Loop until cancelled."""
+    """Loop until cancelled. Transient errors in a single cycle are logged and skipped."""
     settings = get_settings()
     configure_logging(settings.log_level)
     while True:
-        await run_once()
+        try:
+            await run_once()
+        except asyncio.CancelledError:
+            raise  # propagate shutdown signal
+        except Exception:
+            logger.exception("poll_cycle_error")
         await asyncio.sleep(POLL_INTERVAL_SECONDS)
 
 

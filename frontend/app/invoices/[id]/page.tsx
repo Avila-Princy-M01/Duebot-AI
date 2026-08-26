@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { EdgeCaseBadge, edgeCaseMeta } from "../../../components/invoices/EdgeCaseBadge";
 import { InvoiceTimeline } from "../../../components/invoices/InvoiceTimeline";
 import { PromiseList } from "../../../components/invoices/PromiseList";
-import { getInvoice, injectReply, previewNudge, triggerNudge } from "../../../lib/api";
+import { getInvoice, injectReply, previewNudge, resolveInvoice, triggerNudge } from "../../../lib/api";
 import { formatDate, formatINR } from "../../../lib/format";
 import type { InvoiceDetail, NudgePreview } from "../../../lib/types";
 
@@ -19,6 +19,10 @@ export default function InvoiceDetailPage({ params }: InvoiceDetailPageProps) {
   const [reply, setReply] = useState("will sort it out soon");
   const [isNotFound, setIsNotFound] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resolveReasoning, setResolveReasoning] = useState("");
+  const [resolveError, setResolveError] = useState<string | null>(null);
+  const [resolving, setResolving] = useState(false);
+  const [resolveSuccess, setResolveSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     void getInvoice(params.id)
@@ -47,6 +51,7 @@ export default function InvoiceDetailPage({ params }: InvoiceDetailPageProps) {
 
   return (
     <div className="space-y-6">
+      {/* Header Banner */}
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between rounded-2xl border border-slate-800/80 bg-panel/70 p-6 backdrop-blur-md">
         <div className="space-y-1.5">
           <div className="flex flex-wrap items-center gap-2">
@@ -54,7 +59,7 @@ export default function InvoiceDetailPage({ params }: InvoiceDetailPageProps) {
             <EdgeCaseBadge edgeCase={invoice.edge_case} />
           </div>
           <p className="text-sm font-semibold text-slate-200">
-            <a href={`/buyers/${invoice.buyer_id}`} className="hover:underline">
+            <a href={`/buyers/${invoice.buyer_id}`} className="hover:underline text-sky-400">
               {invoice.buyer_company_name}
             </a>
             <span className="mx-1.5 text-slate-600">|</span>
@@ -75,7 +80,7 @@ export default function InvoiceDetailPage({ params }: InvoiceDetailPageProps) {
             )}{" "}
             |{" "}
             <a href={`/buyers/${invoice.buyer_id}`} className="font-semibold text-sky-400 hover:underline">
-              Buyer Brief
+              Buyer Profile & Open Invoices →
             </a>
           </p>
         </div>
@@ -93,9 +98,91 @@ export default function InvoiceDetailPage({ params }: InvoiceDetailPageProps) {
         </div>
       </div>
 
+      {/* Human Review Resolution Panel — ELEVATED TO TOP for immediate operator visibility */}
+      {invoice.state === "human_review" && (
+        <div className="rounded-2xl border border-amber-500/40 bg-amber-950/20 p-6 backdrop-blur-md space-y-4 shadow-lg shadow-amber-500/5">
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400 text-base font-extrabold border border-amber-500/30">!</span>
+            <div>
+              <h3 className="text-sm font-extrabold text-amber-300">Human Review Required (Parked State)</h3>
+              <p className="mt-0.5 text-xs leading-relaxed text-slate-300">
+                This invoice has been safety-routed to the human queue (ambiguous reply below 70% confidence threshold, active dispute, or contact cap reached). As the merchant operator, review and record your decision below.
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <label
+              htmlFor="resolution-reasoning"
+              className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-300"
+            >
+              Operator Reasoning <span className="text-rose-400">*</span>
+            </label>
+            <textarea
+              id="resolution-reasoning"
+              className="w-full rounded-xl border border-amber-500/30 bg-slate-900 p-3 text-xs text-white placeholder-slate-500 focus:border-amber-400 focus:outline-none leading-relaxed"
+              placeholder="e.g. Spoke with buyer directly on phone — confirmed bank transfer is processing. Marking as recovered."
+              value={resolveReasoning}
+              onChange={(e) => { setResolveReasoning(e.target.value); setResolveError(null); }}
+              rows={2}
+              aria-label="Resolution reasoning"
+            />
+            {resolveError && (
+              <p className="mt-1 text-xs font-semibold text-rose-400" role="alert">{resolveError}</p>
+            )}
+          </div>
+
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="button"
+              disabled={resolving}
+              className="rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-emerald-500/20 hover:brightness-110 disabled:opacity-50 transition-all flex items-center gap-1.5"
+              onClick={() => {
+                if (resolveReasoning.trim().length < 5) { setResolveError("Reasoning must be at least 5 characters."); return; }
+                setResolving(true);
+                void resolveInvoice(invoice.invoice_id, "recovered", resolveReasoning.trim())
+                  .then(async () => {
+                    const fresh = await getInvoice(params.id);
+                    setInvoice(fresh.data);
+                    setResolveReasoning("");
+                    setResolveSuccess("Marked as recovered — invoice is now settled.");
+                  })
+                  .catch((err: unknown) => setResolveError(err instanceof Error ? err.message : "Failed to resolve"))
+                  .finally(() => setResolving(false));
+              }}
+            >
+              <span>✓ Mark Recovered</span>
+            </button>
+            <button
+              type="button"
+              disabled={resolving}
+              className="rounded-xl border border-rose-500/40 bg-rose-950/30 px-4 py-2.5 text-xs font-bold text-rose-300 hover:bg-rose-900/40 disabled:opacity-50 transition-all flex items-center gap-1.5"
+              onClick={() => {
+                if (resolveReasoning.trim().length < 5) { setResolveError("Reasoning must be at least 5 characters."); return; }
+                setResolving(true);
+                void resolveInvoice(invoice.invoice_id, "closed", resolveReasoning.trim())
+                  .then(async () => {
+                    const fresh = await getInvoice(params.id);
+                    setInvoice(fresh.data);
+                    setResolveReasoning("");
+                    setResolveSuccess("Invoice closed — workflow terminated.");
+                  })
+                  .catch((err: unknown) => setResolveError(err instanceof Error ? err.message : "Failed to resolve"))
+                  .finally(() => setResolving(false));
+              }}
+            >
+              <span>✕ Close / Write Off</span>
+            </button>
+          </div>
+          {resolveSuccess && (
+            <p className="text-xs font-semibold text-emerald-400" role="status">{resolveSuccess}</p>
+          )}
+        </div>
+      )}
+
       {invoice.edge_case && invoice.edge_case !== "none" ? (
         <div className="rounded-2xl border border-violet-500/25 bg-violet-950/20 p-4">
-          <p className="text-[11px] font-extrabold uppercase tracking-wider text-violet-300">
+          <p className="text-xs font-extrabold uppercase tracking-wider text-violet-300">
             Edge case under test: {edgeCaseMeta(invoice.edge_case).label}
           </p>
           <p className="mt-1 text-xs leading-relaxed text-slate-300">
@@ -170,7 +257,7 @@ export default function InvoiceDetailPage({ params }: InvoiceDetailPageProps) {
             {invoice.payment_link_id ? (
               <div className="flex justify-between">
                 <dt className="text-slate-400">Razorpay link</dt>
-                <dd className="font-mono text-[10px] text-sky-400">{invoice.payment_link_id}</dd>
+                <dd className="font-mono text-xs text-sky-400">{invoice.payment_link_id}</dd>
               </div>
             ) : null}
           </dl>
@@ -184,28 +271,12 @@ export default function InvoiceDetailPage({ params }: InvoiceDetailPageProps) {
         </div>
       ) : null}
 
-      <div className="flex flex-wrap gap-3">
+      {/* Action Buttons with clear Visual Hierarchy */}
+      <div className="flex flex-wrap items-center gap-3">
+        {/* Primary Action Button */}
         <button
           type="button"
-          className="rounded-xl border border-slate-800 bg-panel px-4 py-2 text-xs font-bold text-slate-300 hover:bg-slate-800"
-          onClick={() => {
-            void previewNudge(invoice.invoice_id).then((res) => setPreview(res.data));
-          }}
-        >
-          Preview Nudge
-        </button>
-        <button
-          type="button"
-          className="rounded-xl border border-sky-500/30 bg-sky-500/10 px-4 py-2 text-xs font-bold text-sky-400 hover:bg-sky-500 hover:text-white"
-          onClick={() => {
-            void triggerNudge(invoice.invoice_id, true).then((res) => setPreview(res.data.preview));
-          }}
-        >
-          Dry-Run Trigger
-        </button>
-        <button
-          type="button"
-          className="rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 px-4 py-2 text-xs font-bold text-white shadow-lg shadow-emerald-500/20"
+          className="rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 px-5 py-2.5 text-xs font-extrabold text-white shadow-lg shadow-emerald-500/25 ring-1 ring-emerald-400/40 hover:brightness-110 transition-all flex items-center gap-2"
           onClick={() => {
             void triggerNudge(invoice.invoice_id, false).then(async () => {
               const fresh = await getInvoice(params.id);
@@ -213,13 +284,42 @@ export default function InvoiceDetailPage({ params }: InvoiceDetailPageProps) {
             });
           }}
         >
-          Send WhatsApp Nudge
+          <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+          </svg>
+          <span>Send WhatsApp Nudge</span>
+        </button>
+
+        {/* Secondary Action Button */}
+        <button
+          type="button"
+          className="rounded-xl border border-slate-700 bg-slate-800/80 px-4 py-2.5 text-xs font-bold text-slate-200 hover:bg-slate-700 hover:text-white transition-all flex items-center gap-1.5"
+          onClick={() => {
+            void previewNudge(invoice.invoice_id).then((res) => setPreview(res.data));
+          }}
+        >
+          <svg className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+          </svg>
+          <span>Preview Nudge</span>
+        </button>
+
+        {/* Tertiary Action Button */}
+        <button
+          type="button"
+          className="rounded-xl border border-sky-500/30 bg-sky-500/10 px-4 py-2.5 text-xs font-bold text-sky-400 hover:bg-sky-500/20 transition-all flex items-center gap-1.5"
+          onClick={() => {
+            void triggerNudge(invoice.invoice_id, true).then((res) => setPreview(res.data.preview));
+          }}
+        >
+          <span>Dry-Run Trigger</span>
         </button>
       </div>
 
       {preview ? (
         <div className="rounded-2xl border border-emerald-500/30 bg-emerald-950/20 p-5 text-xs">
-          <p className="text-slate-400 font-semibold mb-2">{preview.policy_reason}</p>
+          <p className="text-slate-300 font-semibold mb-2">{preview.policy_reason}</p>
           <div className="rounded-xl border border-emerald-500/20 bg-slate-900/90 p-4 font-mono text-slate-200 leading-relaxed shadow-inner">
             {preview.drafted_message}
           </div>
@@ -233,10 +333,11 @@ export default function InvoiceDetailPage({ params }: InvoiceDetailPageProps) {
           value={reply}
           onChange={(event) => setReply(event.target.value)}
           rows={3}
+          aria-label="Buyer simulated WhatsApp reply"
         />
         <button
           type="button"
-          className="rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 px-4 py-2 text-xs font-bold text-slate-950 shadow-lg shadow-amber-500/20"
+          className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-xs font-bold text-amber-300 hover:bg-amber-500 hover:text-white transition-all"
           onClick={() => {
             void injectReply(invoice.invoice_id, reply).then(async () => {
               const fresh = await getInvoice(params.id);
@@ -244,12 +345,11 @@ export default function InvoiceDetailPage({ params }: InvoiceDetailPageProps) {
             });
           }}
         >
-          Submit Reply →
+          Inject WhatsApp Reply
         </button>
       </div>
 
       <PromiseList promises={invoice.promises} promiseOutcome={invoice.promise_outcome} />
-
       <InvoiceTimeline interactions={invoice.interactions} audit={invoice.audit} />
     </div>
   );

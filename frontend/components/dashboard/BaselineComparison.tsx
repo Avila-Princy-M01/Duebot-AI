@@ -99,27 +99,35 @@ export function BaselineComparison({ rows }: BaselineComparisonProps) {
                 <th className="px-4 py-3.5">30-Day Recovery</th>
                 <th className="px-4 py-3.5">Avg Days to Pay</th>
                 <th className="px-4 py-3.5">Contacts Sent</th>
+                <th className="px-4 py-3.5">₹ / Contact</th>
                 <th className="px-4 py-3.5">Total Recovered Value</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60 font-mono">
-              {rows.map((row) => (
-                <tr key={row.id} className="transition-colors hover:bg-slate-800/40">
-                  <td className="px-4 py-3.5 font-sans font-bold text-white">{row.strategy}</td>
-                  <td className="px-4 py-3.5 text-slate-300">{row.eval_set_size}</td>
-                  <td className="px-4 py-3.5 font-bold text-sky-400">
-                    {pct(row.recovered_count / Math.max(row.eval_set_size, 1))}
-                  </td>
-                  <td className="px-4 py-3.5 text-slate-300">{pct(row.recovery_30d)}</td>
-                  <td className="px-4 py-3.5 font-bold text-amber-400">
-                    {Number(row.avg_days_to_recovery ?? 0).toFixed(1)}d
-                  </td>
-                  <td className="px-4 py-3.5 text-slate-300">{row.total_contacts_sent}</td>
-                  <td className="px-4 py-3.5 font-bold text-emerald-400">
-                    {formatINR(row.recovered_value)}
-                  </td>
-                </tr>
-              ))}
+              {rows.map((row) => {
+                const recValue = Number(row.recovered_value);
+                const perContact = row.total_contacts_sent > 0 ? recValue / row.total_contacts_sent : 0;
+                return (
+                  <tr key={row.id} className="transition-colors hover:bg-slate-800/40">
+                    <td className="px-4 py-3.5 font-sans font-bold text-white">{row.strategy}</td>
+                    <td className="px-4 py-3.5 text-slate-300">{row.eval_set_size}</td>
+                    <td className="px-4 py-3.5 font-bold text-sky-400">
+                      {pct(row.recovered_count / Math.max(row.eval_set_size, 1))}
+                    </td>
+                    <td className="px-4 py-3.5 text-slate-300">{pct(row.recovery_30d)}</td>
+                    <td className="px-4 py-3.5 font-bold text-amber-400">
+                      {Number(row.avg_days_to_recovery ?? 0).toFixed(1)}d
+                    </td>
+                    <td className="px-4 py-3.5 text-slate-300">{row.total_contacts_sent}</td>
+                    <td className="px-4 py-3.5 font-bold text-sky-400">
+                      {perContact > 0 ? formatINR(Math.round(perContact)) : <span className="text-slate-600">—</span>}
+                    </td>
+                    <td className="px-4 py-3.5 font-bold text-emerald-400">
+                      {formatINR(row.recovered_value)}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

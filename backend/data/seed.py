@@ -422,6 +422,39 @@ async def seed_from_generator(
                 )
                 continue
 
+            # Contact-cap escalation: buyer never replied after 3+ outbound nudges.
+            # NUDGED → CONTACT_CAP_REACHED → ESCALATED → ROUTED_TO_HUMAN → HUMAN_REVIEW
+            if not inbound and len(outbound) >= 3:
+                cap_dt = nudge_dt + timedelta(days=7)
+                if step(
+                    TransitionEvent.CONTACT_CAP_REACHED,
+                    reasoning=(
+                        f"Maximum nudge sequence ({len(outbound)} touches) completed with no "
+                        "buyer response; contact cap reached."
+                    ),
+                    actor="agent",
+                    metadata={
+                        "event": "contact_cap_reached",
+                        "attempt_number": len(outbound),
+                        "channel": "whatsapp",
+                    },
+                    target_dt=cap_dt,
+                ):
+                    esc_route_dt = cap_dt + timedelta(minutes=10)
+                    if step(
+                        TransitionEvent.ROUTED_TO_HUMAN,
+                        reasoning=(
+                            "Escalated to collections agent after exhausting automated nudge "
+                            "sequence without response."
+                        ),
+                        actor="agent",
+                        metadata={"event": "routed_to_human", "reason": "contact_cap_reached"},
+                        target_dt=esc_route_dt,
+                    ):
+                        # Leave parked in HUMAN_REVIEW — human has not resolved yet in the demo.
+                        pass
+                continue
+
             # Inbound reply processing
             if inbound:
                 reply_dt = _dt(inbound.timestamp)
@@ -521,34 +554,50 @@ async def seed_from_generator(
                         target_dt=disp_dt,
                     ):
                         route_dt = current_clock + timedelta(minutes=5)
-                        if (
-                            step(
-                                TransitionEvent.ROUTED_TO_HUMAN,
-                                reasoning=(
-                                    "Dispute routed to merchant billing desk for credit note "
-                                    "or invoice review."
-                                ),
-                                actor="agent",
-                                metadata={"event": "routed_to_human"},
-                                target_dt=route_dt,
-                            )
-                            and idx % 2 == 0
+                        # All disputes route to human_review — no idx gate.
+                        # Alternate resolution: even idx → billing error confirmed, close;
+                        # odd idx → error disproved, recover the invoice.
+                        if step(
+                            TransitionEvent.ROUTED_TO_HUMAN,
+                            reasoning=(
+                                "Dispute routed to merchant billing desk for credit note "
+                                "or invoice review."
+                            ),
+                            actor="agent",
+                            metadata={"event": "routed_to_human"},
+                            target_dt=route_dt,
                         ):
                             res_dt = current_clock + timedelta(days=1)
-                            step(
-                                TransitionEvent.HUMAN_RESOLVED_CLOSED,
-                                reasoning=(
-                                    "Merchant operator verified billing adjustment "
-                                    "and closed dispute."
-                                ),
-                                actor="human",
-                                metadata={
-                                    "event": "human_resolved_closed",
-                                    "resolution": "credit_note_issued",
-                                    "actor_role": "billing_manager",
-                                },
-                                target_dt=res_dt,
-                            )
+                            if idx % 2 == 0:
+                                step(
+                                    TransitionEvent.HUMAN_RESOLVED_CLOSED,
+                                    reasoning=(
+                                        "Merchant operator verified billing adjustment "
+                                        "and closed dispute."
+                                    ),
+                                    actor="human",
+                                    metadata={
+                                        "event": "human_resolved_closed",
+                                        "resolution": "credit_note_issued",
+                                        "actor_role": "billing_manager",
+                                    },
+                                    target_dt=res_dt,
+                                )
+                            else:
+                                step(
+                                    TransitionEvent.HUMAN_RESOLVED_RECOVERED,
+                                    reasoning=(
+                                        "Merchant operator reviewed dispute, confirmed invoice "
+                                        "is valid, and buyer settled."
+                                    ),
+                                    actor="human",
+                                    metadata={
+                                        "event": "human_resolved_recovered",
+                                        "resolution": "dispute_disproved",
+                                        "actor_role": "billing_manager",
+                                    },
+                                    target_dt=res_dt,
+                                )
                 elif is_opt_out or inbound.intent_label == "opt_out":
                     opt_dt = current_clock + timedelta(seconds=15)
                     conf = 0.95
@@ -579,25 +628,24 @@ async def seed_from_generator(
                 elif is_ambiguous or inbound.intent_label == "ambiguous":
                     amb_dt = current_clock + timedelta(seconds=15)
                     conf = 0.45  # Below 70% threshold -> Abstention story
-                    if (
-                        step(
-                            TransitionEvent.NEEDS_HUMAN,
-                            reasoning=(
-                                f'Ambiguous reply: "{inbound.message_text}"; abstained below 70% '
-                                "threshold and routed to Human Review."
-                            ),
-                            actor="agent",
-                            metadata={
-                                "event": "needs_human",
-                                "intent": "ambiguous",
-                                "confidence": conf,
-                                "threshold": 0.70,
-                                "abstained": True,
-                            },
-                            target_dt=amb_dt,
-                        )
-                        and idx % 3 == 0
-                    ):
+                    # All ambiguous replies reach HUMAN_REVIEW — no idx gate on the route step.
+                    # ~half resolve (even idx); odd idx stays parked in human_review for the demo.
+                    if step(
+                        TransitionEvent.NEEDS_HUMAN,
+                        reasoning=(
+                            f'Ambiguous reply: "{inbound.message_text}"; abstained below 70% '
+                            "threshold and routed to Human Review."
+                        ),
+                        actor="agent",
+                        metadata={
+                            "event": "needs_human",
+                            "intent": "ambiguous",
+                            "confidence": conf,
+                            "threshold": 0.70,
+                            "abstained": True,
+                        },
+                        target_dt=amb_dt,
+                    ) and idx % 2 == 0:
                         human_dt = current_clock + timedelta(hours=4)
                         step(
                             TransitionEvent.HUMAN_RESOLVED_RECOVERED,
@@ -643,6 +691,7 @@ async def seed_from_generator(
             occurred_at=row.occurred_at,
             reasoning_summary=row.reasoning_summary,
             prev_hash=row.prev_hash,
+            extra_metadata=row.extra_metadata,
         )
         current_prev_hash = row.row_hash
         session.add(row)
