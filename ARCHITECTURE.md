@@ -250,7 +250,7 @@ erDiagram
 **Why this shape, specifically:**
 - `interactions.confidence` lives on the row, not just in a log line — it's queryable, so "show me every promise logged below 0.8 confidence" is a real query for both debugging and the eval report, not a grep through logs.
 - `promises` is a separate table from `interactions`, not a status flag on the invoice, because one invoice can accumulate a promise-broken → re-promised history, and the recovery metrics need that full sequence, not just the latest state.
-- `audit_log` is append-only at the database level (`REVOKE UPDATE, DELETE` on the table for the application role), not just by application convention — when an auditor asks "how do you *guarantee* this log can't be edited", this provides a cryptographic and permission-level guarantee.
+- `audit_log` is append-only by application invariant, enforced cryptographically by an unbroken SHA-256 hash chain (`GET /api/audit/verify`) with live tamper detection — DB-level `REVOKE UPDATE, DELETE` is documented for production PostgreSQL multi-tenant hardening.
 - `AUDIT_LOG.actor` distinguishes `agent` (deterministic engine), `human` (merchant action), and `system` (webhook-triggered, e.g. payment confirmed) — so the audit trail can answer "did a human or the agent make this call" at a glance.
 
 ---
@@ -602,7 +602,7 @@ The ER diagram in §5 shows relationships. This table shows exact types, constra
 | `metadata` | `JSONB` | `NULLABLE` | LLM confidence, raw input, etc. |
 
 **Constraints:**
-- **No UPDATE or DELETE** — enforced at the database level: `REVOKE UPDATE, DELETE ON audit_log FROM app_role;` This is the only way to *guarantee* the log is immutable, not just by application convention.
+- **No UPDATE or DELETE** — enforced by application architecture (zero update/delete pathways) and mathematically guaranteed by the SHA-256 cryptographic hash chain (`GET /api/audit/verify`). In production PostgreSQL deployments, `REVOKE UPDATE, DELETE ON audit_log FROM app_role;` is applied as an additional defence-in-depth permission layer.
 - **Index:** `idx_audit_invoice` on `(invoice_id)` — for the timeline view on the frontend
 
 ### `baseline_comparison`

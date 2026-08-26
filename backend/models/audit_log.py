@@ -1,7 +1,8 @@
 """Append-only audit log ORM model.
 
 Application code must never UPDATE or DELETE rows on this table.
-Database-level REVOKE is documented in the Alembic migration.
+Immutability is mathematically guaranteed by the SHA-256 hash chain (GET /api/audit/verify).
+Database-level REVOKE is documented for production PostgreSQL multi-tenant hardening.
 """
 
 from __future__ import annotations
