@@ -55,9 +55,33 @@ export async function getBuyerBrief(buyerId: string): Promise<Envelope<import(".
   return request<Envelope<import("./types").BuyerBrief>>(`/api/buyers/${buyerId}/brief`);
 }
 
-export async function listAudit(invoiceId?: string): Promise<Envelope<AuditRow[]>> {
-  const q = invoiceId ? `?invoice_id=${encodeURIComponent(invoiceId)}&limit=100` : "?limit=100";
-  return request<Envelope<AuditRow[]>>(`/api/audit${q}`);
+export async function listAudit(
+  paramsOrInvoiceId?:
+    | string
+    | {
+        invoice_id?: string;
+        actor?: string;
+        from_state?: string;
+        to_state?: string;
+        limit?: number;
+        offset?: number;
+      }
+): Promise<Envelope<AuditRow[]>> {
+  const query = new URLSearchParams();
+  if (typeof paramsOrInvoiceId === "string") {
+    query.set("invoice_id", paramsOrInvoiceId);
+    query.set("limit", "100");
+  } else if (paramsOrInvoiceId) {
+    query.set("limit", String(paramsOrInvoiceId.limit ?? 200));
+    if (paramsOrInvoiceId.offset !== undefined) query.set("offset", String(paramsOrInvoiceId.offset));
+    if (paramsOrInvoiceId.invoice_id) query.set("invoice_id", paramsOrInvoiceId.invoice_id);
+    if (paramsOrInvoiceId.actor) query.set("actor", paramsOrInvoiceId.actor);
+    if (paramsOrInvoiceId.from_state) query.set("from_state", paramsOrInvoiceId.from_state);
+    if (paramsOrInvoiceId.to_state) query.set("to_state", paramsOrInvoiceId.to_state);
+  } else {
+    query.set("limit", "200");
+  }
+  return request<Envelope<AuditRow[]>>(`/api/audit?${query.toString()}`);
 }
 
 export async function listBaselines(): Promise<Envelope<BaselineRow[]>> {
