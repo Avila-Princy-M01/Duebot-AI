@@ -7,16 +7,16 @@ interface AuditLogProps {
 
 export function AuditLog({ rows }: AuditLogProps) {
   return (
-    <div className="glass-panel overflow-hidden rounded-3xl">
+    <div className="glass-panel overflow-hidden rounded-3xl border border-white/[0.08]">
       <div className="overflow-x-auto">
         <table className="w-full text-left text-xs">
           <thead className="border-b border-white/[0.08] bg-slate-900/80 text-slate-400 font-bold uppercase tracking-wider">
             <tr>
-              <th className="px-4 py-3.5">Timestamp (UTC)</th>
+              <th className="px-4 py-3.5">Timestamp (UTC) & Hash</th>
               <th className="px-4 py-3.5">Invoice #</th>
               <th className="px-4 py-3.5">Transition & Event</th>
               <th className="px-4 py-3.5">Actor</th>
-              <th className="px-4 py-3.5">Policy Reasoning & Metadata</th>
+              <th className="px-4 py-3.5">Policy Reasoning & Cryptographic Metadata</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/[0.06] font-sans">
@@ -44,10 +44,24 @@ export function AuditLog({ rows }: AuditLogProps) {
                       ? "bg-sky-500/10 border-sky-500/30 text-sky-300"
                       : "bg-emerald-500/10 border-emerald-500/30 text-emerald-300";
 
+                const shortHash = row.row_hash ? `${row.row_hash.slice(0, 8)}…${row.row_hash.slice(-6)}` : null;
+                const shortPrev = row.prev_hash ? `${row.prev_hash.slice(0, 8)}…` : null;
+
                 return (
                   <tr key={row.id} className="transition-colors hover:bg-white/[0.03] align-top">
-                    <td className="px-4 py-3.5 font-mono text-[11px] text-slate-400 whitespace-nowrap">
-                      {formatTimestamp(row.occurred_at)}
+                    <td className="px-4 py-3.5 whitespace-nowrap space-y-1">
+                      <div className="font-mono text-[11px] text-slate-300 font-semibold">
+                        {formatTimestamp(row.occurred_at)}
+                      </div>
+                      {shortHash ? (
+                        <div
+                          title={`Block Hash: ${row.row_hash}\nPrev Hash: ${row.prev_hash}`}
+                          className="inline-flex items-center gap-1 font-mono text-[9px] text-slate-400 bg-slate-800/80 border border-slate-700/60 rounded px-1.5 py-0.5 cursor-help hover:border-emerald-500/40 hover:text-emerald-300 transition-colors"
+                        >
+                          <span className="text-emerald-400 font-bold">#</span>
+                          <span>{shortHash}</span>
+                        </div>
+                      ) : null}
                     </td>
                     <td className="px-4 py-3.5 font-mono font-bold text-sky-400">
                       <a href={`/invoices/${row.invoice_id}`} className="hover:underline">
@@ -128,6 +142,15 @@ export function AuditLog({ rows }: AuditLogProps) {
                         {resolution ? (
                           <span className="rounded bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 font-mono text-[10px] text-purple-300">
                             resolution: {resolution}
+                          </span>
+                        ) : null}
+
+                        {shortPrev ? (
+                          <span
+                            title={`Previous Block Hash: ${row.prev_hash}`}
+                            className="rounded bg-slate-900 border border-slate-800 px-1.5 py-0.5 font-mono text-[9px] text-slate-500"
+                          >
+                            prev: {shortPrev}
                           </span>
                         ) : null}
                       </div>

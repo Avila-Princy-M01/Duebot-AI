@@ -156,6 +156,8 @@ def upgrade() -> None:
         sa.Column("actor", sa.String(20), nullable=False),
         sa.Column("occurred_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
         sa.Column("reasoning_summary", sa.Text(), nullable=False),
+        sa.Column("prev_hash", sa.String(64), nullable=False, server_default="0" * 64),
+        sa.Column("row_hash", sa.String(64), nullable=False, server_default="0" * 64),
         sa.Column("metadata", sa.JSON(), nullable=True),
         sa.CheckConstraint("actor IN ('agent', 'human', 'system')", name="ck_audit_actor"),
     )

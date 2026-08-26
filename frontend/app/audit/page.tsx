@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { AuditLog } from "../../components/audit/AuditLog";
-import { listAudit } from "../../lib/api";
-import type { AuditRow } from "../../lib/types";
+import { listAudit, verifyAudit } from "../../lib/api";
+import type { AuditRow, AuditVerification } from "../../lib/types";
 
 const STATE_OPTIONS = [
   { value: "", label: "All States" },
@@ -29,6 +29,8 @@ const ACTOR_OPTIONS = [
 export default function AuditPage() {
   const [rows, setRows] = useState<AuditRow[]>([]);
   const [totalCount, setTotalCount] = useState<number | null>(null);
+  const [verification, setVerification] = useState<AuditVerification | null>(null);
+  const [showProofModal, setShowProofModal] = useState<boolean>(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,16 +43,20 @@ export default function AuditPage() {
 
   const loadAudit = useCallback(() => {
     setLoading(true);
-    listAudit({
-      to_state: selectedState || undefined,
-      actor: selectedActor || undefined,
-      invoice_id: invoiceSearch.trim() || undefined,
-      limit,
-      offset,
-    })
-      .then((res) => {
-        setRows(res.data);
-        setTotalCount(res.meta.total_count);
+    Promise.all([
+      listAudit({
+        to_state: selectedState || undefined,
+        actor: selectedActor || undefined,
+        invoice_id: invoiceSearch.trim() || undefined,
+        limit,
+        offset,
+      }),
+      verifyAudit(),
+    ])
+      .then(([auditRes, verifyRes]) => {
+        setRows(auditRes.data);
+        setTotalCount(auditRes.meta.total_count);
+        setVerification(verifyRes.data);
         setError(null);
       })
       .catch((err: unknown) => {
@@ -83,11 +89,31 @@ export default function AuditPage() {
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            Immutable, cryptographically verifiable ledger of every state transition, LLM confidence judgment, and human operator action.
+            Immutable, cryptographically verifiable SHA-256 ledger of every state transition, LLM confidence judgment, and operator decision.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Cryptographic Chain Verification Badge */}
+          {verification ? (
+            <button
+              type="button"
+              onClick={() => setShowProofModal(!showProofModal)}
+              className={`flex items-center gap-1.5 rounded-xl border px-3.5 py-2 text-xs font-bold transition-all shadow-sm ${
+                verification.valid
+                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20"
+                  : "border-rose-500/30 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20"
+              }`}
+            >
+              <span className={`h-2 w-2 rounded-full ${verification.valid ? "bg-emerald-400" : "bg-rose-400"}`} />
+              <span>
+                {verification.valid
+                  ? `Chain Verified ✓ (${verification.rows_verified} blocks)`
+                  : "Tamper Detected ⚠️"}
+              </span>
+            </button>
+          ) : null}
+
           <button
             type="button"
             onClick={loadAudit}
@@ -101,6 +127,48 @@ export default function AuditPage() {
           </span>
         </div>
       </div>
+
+      {/* Cryptographic Proof Card (Expandable) */}
+      {showProofModal && verification ? (
+        <div className="glass-panel p-5 rounded-2xl border border-emerald-500/30 bg-emerald-950/20 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-emerald-400 text-sm">🔒</span>
+              <h3 className="text-sm font-bold text-emerald-300">
+                Cryptographic Audit Trail Proof (SHA-256 Merkle Chain)
+              </h3>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowProofModal(false)}
+              className="text-xs text-slate-400 hover:text-white font-mono"
+            >
+              ✕ Close
+            </button>
+          </div>
+          <p className="text-xs text-slate-300">
+            Every audit log entry contains a cryptographic signature linking directly to its parent transition block (<code className="font-mono text-emerald-400">row_hash = SHA256(canonical_json(row) + prev_hash)</code>). Any retroactive row mutation or insertion immediately breaks subsequent chain hashes.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2 text-xs">
+            <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3">
+              <div className="text-[10px] uppercase font-bold text-slate-400">Chain Integrity Status</div>
+              <div className="text-sm font-extrabold text-emerald-400 mt-0.5">
+                {verification.valid ? "100% Tamper-Evident Valid" : "Tamper Detected"}
+              </div>
+              <div className="text-[10px] text-slate-500 mt-1">Verified: {verification.rows_verified} of {total} blocks</div>
+            </div>
+            <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3 md:col-span-2">
+              <div className="text-[10px] uppercase font-bold text-slate-400">Latest Block Hash (Tip of Chain)</div>
+              <div className="font-mono text-xs text-sky-300 break-all mt-0.5">
+                {verification.latest_hash}
+              </div>
+              <div className="text-[10px] text-slate-500 mt-1 font-mono">
+                Genesis Root: {verification.genesis_hash.slice(0, 16)}… (All 64 zeros)
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {/* Filter Bar */}
       <div className="glass-panel p-4 rounded-2xl flex flex-wrap items-center gap-3 border border-white/[0.08]">

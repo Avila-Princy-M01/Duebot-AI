@@ -57,7 +57,18 @@ export interface AuditRow {
   actor: string;
   occurred_at: string;
   reasoning_summary: string;
+  prev_hash?: string;
+  row_hash?: string;
   extra_metadata: Record<string, unknown> | null;
+}
+
+export interface AuditVerification {
+  valid: boolean;
+  rows_verified: number;
+  genesis_hash: string;
+  latest_hash: string;
+  verified_at: string;
+  error?: string | null;
 }
 
 export interface InvoiceDetail extends InvoiceRow {

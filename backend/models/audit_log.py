@@ -41,6 +41,8 @@ class AuditLog(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
     reasoning_summary: Mapped[str] = mapped_column(Text, nullable=False)
+    prev_hash: Mapped[str] = mapped_column(String(64), nullable=False, default="0" * 64)
+    row_hash: Mapped[str] = mapped_column(String(64), nullable=False, default="0" * 64)
     extra_metadata: Mapped[dict[str, Any] | None] = mapped_column(
         "metadata",
         JSON().with_variant(JSONB(), "postgresql"),

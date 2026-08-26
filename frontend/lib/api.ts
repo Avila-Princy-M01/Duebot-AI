@@ -84,6 +84,10 @@ export async function listAudit(
   return request<Envelope<AuditRow[]>>(`/api/audit?${query.toString()}`);
 }
 
+export async function verifyAudit(): Promise<Envelope<import("./types").AuditVerification>> {
+  return request<Envelope<import("./types").AuditVerification>>("/api/audit/verify");
+}
+
 export async function listBaselines(): Promise<Envelope<BaselineRow[]>> {
   return request<Envelope<BaselineRow[]>>("/api/metrics/baseline");
 }

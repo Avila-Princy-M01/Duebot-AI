@@ -1,19 +1,43 @@
-"""Append-only audit log viewer."""
+"""Append-only audit log viewer and cryptographic chain verification."""
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.dependencies import get_db
+from backend.engine.audit_chain import GENESIS_HASH, verify_chain
 from backend.models.audit_log import AuditLog
-from backend.schemas.audit import AuditEntryOut
+from backend.schemas.audit import AuditEntryOut, AuditVerificationOut
 from backend.schemas.common import Meta, SuccessEnvelope
 
 router = APIRouter(prefix="/audit", tags=["audit"])
+
+
+@router.get("/verify")
+async def verify_audit_chain(
+    session: AsyncSession = Depends(get_db),
+) -> SuccessEnvelope[AuditVerificationOut]:
+    """Walk the immutable SHA-256 hash chain and verify zero tampering across all blocks."""
+    rows = await session.execute(
+        select(AuditLog).order_by(AuditLog.occurred_at.asc(), AuditLog.id.asc())
+    )
+    all_rows = list(rows.scalars())
+    is_valid, count_verified, latest_hash, error_msg = verify_chain(all_rows)
+
+    return SuccessEnvelope(
+        data=AuditVerificationOut(
+            valid=is_valid,
+            rows_verified=count_verified,
+            genesis_hash=GENESIS_HASH,
+            latest_hash=latest_hash,
+            verified_at=datetime.now(UTC),
+            error=error_msg,
+        )
+    )
 
 
 @router.get("")

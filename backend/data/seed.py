@@ -13,6 +13,7 @@ from backend.data.csv_mapper import (
     parse_optional_date,
 )
 from backend.data.generator import SIM_TODAY, BuyerMessage, DueBotDataGenerator
+from backend.engine.audit_chain import GENESIS_HASH, compute_row_hash
 from backend.engine.states import Actor, InvoiceState, TransitionEvent, transition
 from backend.logging_util import mask_email, mask_phone
 from backend.models.audit_log import AuditLog
@@ -202,6 +203,8 @@ async def seed_from_generator(
     # -----------------------------------------------------------------------
     # Pure State-Machine Engine Replay for Immutable Audit Log Generation
     # -----------------------------------------------------------------------
+    pending_audit_logs: list[AuditLog] = []
+
     def _record_step(
         orm_inv: Invoice,
         ref: InvoiceRef,
@@ -232,8 +235,9 @@ async def seed_from_generator(
         meta["event"] = res.audit_entry.event.value
         if "policy_version" not in meta:
             meta["policy_version"] = "v1.0.0"
-        session.add(
+        pending_audit_logs.append(
             AuditLog(
+                id=uuid4(),
                 invoice_id=orm_inv.invoice_id,
                 from_state=res.audit_entry.from_state.value,
                 to_state=res.audit_entry.to_state.value,
@@ -623,6 +627,25 @@ async def seed_from_generator(
                         },
                         target_dt=obj_dt,
                     )
+
+    # -----------------------------------------------------------------------
+    # Build Cryptographic SHA-256 Hash Chain over all chronologically ordered audit logs
+    # -----------------------------------------------------------------------
+    pending_audit_logs.sort(key=lambda a: (a.occurred_at, str(a.id)))
+    current_prev_hash = GENESIS_HASH
+    for row in pending_audit_logs:
+        row.prev_hash = current_prev_hash
+        row.row_hash = compute_row_hash(
+            invoice_id=row.invoice_id,
+            from_state=row.from_state,
+            to_state=row.to_state,
+            actor=row.actor,
+            occurred_at=row.occurred_at,
+            reasoning_summary=row.reasoning_summary,
+            prev_hash=row.prev_hash,
+        )
+        current_prev_hash = row.row_hash
+        session.add(row)
 
     await session.flush()
 

@@ -58,6 +58,26 @@ async def apply_transition(
     )
     payload = dict(result.audit_entry.metadata)
     payload["event"] = result.audit_entry.event.value
+
+    # Compute cryptographic hash chain from latest recorded audit row
+    from backend.engine.audit_chain import GENESIS_HASH, compute_row_hash
+
+    last_hash_stmt = (
+        select(AuditLog.row_hash).order_by(AuditLog.occurred_at.desc(), AuditLog.id.desc()).limit(1)
+    )
+    last_hash_res = await session.execute(last_hash_stmt)
+    latest_prev = last_hash_res.scalar_one_or_none() or GENESIS_HASH
+
+    row_hash = compute_row_hash(
+        invoice_id=result.audit_entry.invoice_id,
+        from_state=result.audit_entry.from_state.value,
+        to_state=result.audit_entry.to_state.value,
+        actor=result.audit_entry.actor,
+        occurred_at=result.audit_entry.occurred_at,
+        reasoning_summary=result.audit_entry.reasoning_summary,
+        prev_hash=latest_prev,
+    )
+
     session.add(
         AuditLog(
             invoice_id=result.audit_entry.invoice_id,
@@ -66,6 +86,8 @@ async def apply_transition(
             actor=result.audit_entry.actor,
             occurred_at=result.audit_entry.occurred_at,
             reasoning_summary=result.audit_entry.reasoning_summary,
+            prev_hash=latest_prev,
+            row_hash=row_hash,
             extra_metadata=payload,
         )
     )
