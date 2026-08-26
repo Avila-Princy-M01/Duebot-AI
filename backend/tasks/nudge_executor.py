@@ -169,24 +169,23 @@ async def execute_nudge(
             metadata={"attempt_number": attempt, "interaction_id": str(interaction.id)},
         )
     else:
-        from backend.models.audit_log import AuditLog
+        from backend.tasks.lifecycle import append_audit
 
-        session.add(
-            AuditLog(
-                invoice_id=invoice.invoice_id,
-                from_state=invoice.state,
-                to_state=invoice.state,
-                actor="agent",
-                occurred_at=now,
-                reasoning_summary=f"outbound follow-up WhatsApp nudge sent (attempt #{attempt})",
-                extra_metadata={
-                    "event": "nudge_sent",
-                    "attempt_number": attempt,
-                    "interaction_id": str(interaction.id),
-                },
-            )
+        await append_audit(
+            session,
+            invoice_id=invoice.invoice_id,
+            from_state=invoice.state,
+            to_state=invoice.state,
+            actor="agent",
+            occurred_at=now,
+            reasoning_summary=f"outbound follow-up WhatsApp nudge sent (attempt #{attempt})",
+            extra_metadata={
+                "event": "nudge_sent",
+                "attempt_number": attempt,
+                "interaction_id": str(interaction.id),
+                "policy_version": "v1.0.0",
+            },
         )
-        await session.flush()
     return True, decision, body
 
 
