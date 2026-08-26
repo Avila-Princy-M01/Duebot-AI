@@ -13,13 +13,19 @@ export function AttributionBreakdown({
   recoveryMetrics,
   showBenchmarkLink = true,
 }: AttributionBreakdownProps) {
-  const totalInvoices = invoices.length;
+  const totalInvoices =
+    recoveryMetrics && recoveryMetrics.eval_set_size > 0
+      ? recoveryMetrics.eval_set_size
+      : invoices.length;
   if (totalInvoices === 0) return null;
 
   const recoveredInvoices = invoices.filter(
     (inv) => inv.status === "paid" || inv.state === "recovered"
   );
-  const recoveredCount = recoveredInvoices.length;
+  const recoveredCount =
+    recoveryMetrics && recoveryMetrics.recovered_count > 0
+      ? recoveryMetrics.recovered_count
+      : recoveredInvoices.length;
   const recoveredValue = recoveredInvoices.reduce(
     (sum, inv) => sum + Number(inv.amount_paid || inv.total_amount),
     0

@@ -31,9 +31,12 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export async function listInvoices(params?: {
   status?: string;
   risk_tier?: string;
+  limit?: number;
+  offset?: number;
 }): Promise<Envelope<InvoiceRow[]>> {
   const query = new URLSearchParams();
-  query.set("limit", "100");
+  query.set("limit", String(params?.limit ?? 500));
+  if (params?.offset !== undefined) query.set("offset", String(params?.offset));
   if (params?.status) query.set("status", params.status);
   if (params?.risk_tier) query.set("risk_tier", params.risk_tier);
   return request<Envelope<InvoiceRow[]>>(`/api/invoices?${query.toString()}`);
