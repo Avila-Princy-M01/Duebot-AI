@@ -179,4 +179,3 @@ async def brief_buyer(
             model=result.model,
         )
     )
-

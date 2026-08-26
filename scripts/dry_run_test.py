@@ -57,7 +57,7 @@ with urllib.request.urlopen(req) as r:
     inbox = json.loads(r.read().decode())["data"]
     top_msg = inbox[0] if inbox else {}
     txt = top_msg.get("message_text", "")[:60]
-    print(f"[TEST 4: Inbox] Top message direction: {top_msg.get('direction')} - \"{txt}...\"")
+    print(f'[TEST 4: Inbox] Top message direction: {top_msg.get("direction")} - "{txt}..."')
 
 # Test 5: Simulate Ambiguous Reply -> Abstain to Human Review
 req = urllib.request.Request(
@@ -83,9 +83,9 @@ with urllib.request.urlopen(req) as r:
 # Test 7: Assistant Voice / Query API
 req = urllib.request.Request(
     "http://localhost:8000/api/assistant/ask",
-    data=json.dumps(
-        {"query": "What is our total amount at risk and aging distribution?"}
-    ).encode("utf-8"),
+    data=json.dumps({"query": "What is our total amount at risk and aging distribution?"}).encode(
+        "utf-8"
+    ),
     headers={"Content-Type": "application/json"},
 )
 with urllib.request.urlopen(req) as r:

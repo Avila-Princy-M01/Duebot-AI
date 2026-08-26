@@ -44,8 +44,7 @@ async def ask_assistant(
     b90_plus = len([inv for inv in overdue_invoices if inv.days_overdue > 90])
 
     aging_str = (
-        f"0-30 days: {b0_30}, 31-60 days: {b31_60}, "
-        f"61-90 days: {b61_90}, 90+ days: {b90_plus}"
+        f"0-30 days: {b0_30}, 31-60 days: {b31_60}, 61-90 days: {b61_90}, 90+ days: {b90_plus}"
     )
 
     # 2. Buyers summary
@@ -102,8 +101,7 @@ async def ask_assistant(
                 .limit(4)
             )
             int_texts = [
-                f"{i.direction.upper()}: {i.message_text[:80]}"
-                for i in b_ints.scalars().all()
+                f"{i.direction.upper()}: {i.message_text[:80]}" for i in b_ints.scalars().all()
             ]
 
             rate_val = b_obj.on_time_payment_rate * 100
@@ -120,10 +118,7 @@ async def ask_assistant(
     if not target_inv_id:
         q_low = body.query.lower()
         for inv in all_invoices:
-            if (
-                inv.invoice_id.lower() in q_low
-                or inv.invoice_number.lower() in q_low
-            ):
+            if inv.invoice_id.lower() in q_low or inv.invoice_number.lower() in q_low:
                 target_inv_id = inv.invoice_id
                 break
 

@@ -43,7 +43,6 @@ HELD_OUT_TEST_SET: list[TestCase] = [
     TestCase(10, "Settle poora amount by Monday 24th", ReplyIntent.PROMISE, date(2026, 8, 24)),
     TestCase(11, "Bank transfer done, ref by 26th", ReplyIntent.PROMISE, date(2026, 8, 26)),
     TestCase(12, "Approved by CFO, funds on 27th Aug", ReplyIntent.PROMISE, date(2026, 8, 27)),
-
     # --- DISPUTE (10 samples) ---
     TestCase(13, "Bill total is wrong, unit price 450", ReplyIntent.DISPUTE),
     TestCase(14, "Paid bill via UPI on August 5th", ReplyIntent.DISPUTE),
@@ -55,7 +54,6 @@ HELD_OUT_TEST_SET: list[TestCase] = [
     TestCase(20, "Galat rate lagaya hai, revision bhejiyega", ReplyIntent.DISPUTE),
     TestCase(21, "Bill amount doesn't match PO rate", ReplyIntent.DISPUTE),
     TestCase(22, "Payment cleared 2 weeks ago, ref 4410", ReplyIntent.DISPUTE),
-
     # --- OPT_OUT (8 samples) ---
     TestCase(23, "Remove mobile number from automated alerts", ReplyIntent.OPT_OUT),
     TestCase(24, "Do not send reminders to my WhatsApp", ReplyIntent.OPT_OUT),
@@ -65,7 +63,6 @@ HELD_OUT_TEST_SET: list[TestCase] = [
     TestCase(28, "Unsubscribe and block this phone number", ReplyIntent.OPT_OUT),
     TestCase(29, "Contact corporate email, stop WhatsApp", ReplyIntent.OPT_OUT),
     TestCase(30, "Refrain from messaging this number again", ReplyIntent.OPT_OUT),
-
     # --- OBJECTION (10 samples) ---
     TestCase(31, "Email signed delivery challan copy first", ReplyIntent.OBJECTION),
     TestCase(32, "Awaiting client clearance to release funds", ReplyIntent.OBJECTION),
@@ -77,7 +74,6 @@ HELD_OUT_TEST_SET: list[TestCase] = [
     TestCase(38, "Month end payout cycle starts on 30th", ReplyIntent.OBJECTION),
     TestCase(39, "Provide state GST breakup for our audit", ReplyIntent.OBJECTION),
     TestCase(40, "Senior manager traveling out of station", ReplyIntent.OBJECTION),
-
     # --- AMBIGUOUS (10 samples) ---
     TestCase(41, "Checking", ReplyIntent.AMBIGUOUS),
     TestCase(42, "Dekhte hain", ReplyIntent.AMBIGUOUS),
@@ -136,7 +132,7 @@ async def run_evaluation(mode: str) -> dict[str, Any]:
                 except IntegrationError as err:
                     if attempt == max_retries - 1:
                         raise err
-                    print(f"API Rate limit hit (attempt {attempt+1}), retrying in 25s...")
+                    print(f"API Rate limit hit (attempt {attempt + 1}), retrying in 25s...")
                     await asyncio.sleep(25)
             await asyncio.sleep(2.5)
 
@@ -240,16 +236,16 @@ def generate_markdown_report(data: dict[str, Any]) -> str:
     metrics_rows = []
     for cls_name, m in data["class_metrics"].items():
         support = sum(cm[cls_name].values())
-        prec_str = f"{m['precision']*100:.1f}%"
-        rec_str = f"{m['recall']*100:.1f}%"
-        f1_str = f"{m['f1']*100:.1f}%"
+        prec_str = f"{m['precision'] * 100:.1f}%"
+        rec_str = f"{m['recall'] * 100:.1f}%"
+        f1_str = f"{m['f1'] * 100:.1f}%"
         row = f"| `{cls_name}` | {prec_str} | {rec_str} | {f1_str} | {support} |"
         metrics_rows.append(row)
     metrics_table = "\n".join([metrics_table_header, metrics_table_sep] + metrics_rows)
 
-    acc_pct = f"{data['accuracy']*100:.1f}%"
-    high_prec = f"{data['high_confidence_precision']*100:.1f}%"
-    low_abst = f"{data['low_confidence_abstention_rate']*100:.1f}%"
+    acc_pct = f"{data['accuracy'] * 100:.1f}%"
+    high_prec = f"{data['high_confidence_precision'] * 100:.1f}%"
+    low_abst = f"{data['low_confidence_abstention_rate'] * 100:.1f}%"
 
     bullet_engine = f"* **Engine**: `{engine_name}` ({data['fallback_count']} fallbacks)."
     bullet_dataset = "* **Dataset**: 50 held-out B2B test cases (unseen during dev)."
@@ -349,7 +345,7 @@ async def main() -> None:
     out_md.write_text(md_content, encoding="utf-8")
 
     print(f"\nEvaluation Complete! Mode: {mode.upper()}")
-    print(f"Accuracy: {report['accuracy']*100:.1f}%")
+    print(f"Accuracy: {report['accuracy'] * 100:.1f}%")
     print(f"Wrote benchmark report to: {out_md}\n")
 
 

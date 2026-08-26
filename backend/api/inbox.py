@@ -54,10 +54,7 @@ async def list_inbox(
         InboxMessageOut(
             interaction_id=str(r.id),
             invoice_id=r.invoice_id,
-            to_phone_masked=(
-                "inbound" if r.direction == "inbound"
-                else "outbound"
-            ),
+            to_phone_masked=("inbound" if r.direction == "inbound" else "outbound"),
             body=r.message_text,
             sent_at=r.sent_at.isoformat(),
             direction=r.direction,
@@ -82,14 +79,9 @@ async def inject_reply(
         raise NotFoundError(f"buyer {invoice.buyer_id} not found")
 
     try:
-        await process_reply(
-            session, invoice, buyer, body.text, parser=parser
-        )
+        await process_reply(session, invoice, buyer, body.text, parser=parser)
     except InvalidTransitionError:
-        note = (
-            f"Invoice is in state '{invoice.state}'"
-            " — repeat automated transitions locked."
-        )
+        note = f"Invoice is in state '{invoice.state}' — repeat automated transitions locked."
         return SuccessEnvelope(
             data={
                 "invoice_id": invoice.invoice_id,
@@ -104,4 +96,3 @@ async def inject_reply(
             "state": invoice.state,
         }
     )
-

@@ -203,20 +203,23 @@ async def seed_from_generator(
     def _record_step(
         orm_inv: Invoice,
         ref: InvoiceRef,
+        clock: datetime,
         event: TransitionEvent,
         *,
         reasoning: str,
         actor: Actor,
         metadata: dict[str, object] | None,
-        occurred_at: datetime,
-    ) -> None:
+        target_dt: datetime,
+    ) -> datetime:
+        # Monotonic guard: Each step occurs strictly after the previous step
+        actual_dt = max(target_dt, clock + timedelta(seconds=15))
         res = transition(
             ref,
             event,
             reasoning=reasoning,
             actor=actor,
             metadata=metadata,
-            occurred_at=occurred_at,
+            occurred_at=actual_dt,
         )
         meta = dict(res.audit_entry.metadata)
         meta["event"] = res.audit_entry.event.value
@@ -228,13 +231,14 @@ async def seed_from_generator(
                 from_state=res.audit_entry.from_state.value,
                 to_state=res.audit_entry.to_state.value,
                 actor=res.audit_entry.actor,
-                occurred_at=res.audit_entry.occurred_at,
+                occurred_at=actual_dt,
                 reasoning_summary=res.audit_entry.reasoning_summary,
                 extra_metadata=meta,
             )
         )
         ref.state = res.new_state
         orm_inv.state = res.new_state.value
+        return actual_dt
 
     for idx, inv in enumerate(gen.invoices):
         orm_inv = orm_invoices[inv.invoice_id]
@@ -243,7 +247,32 @@ async def seed_from_generator(
         if inv.status == "draft":
             continue
 
-        due_dt = _dt(f"{inv.due_date}T10:{(idx * 5) % 60:02d}:{(idx * 11) % 60:02d}")
+        # Invariant: Strictly monotonic simulated clock per invoice
+        inv_created_at = _dt(f"{inv.issue_date}T09:{(idx * 3) % 60:02d}:{(idx * 7) % 60:02d}")
+        current_clock = inv_created_at
+
+        def step(
+            event: TransitionEvent,
+            *,
+            reasoning: str,
+            actor: Actor,
+            metadata: dict[str, object] | None,
+            target_dt: datetime,
+            _inv: Invoice = orm_inv,
+            _ref: InvoiceRef = ref,
+        ) -> None:
+            nonlocal current_clock
+            current_clock = _record_step(
+                _inv,
+                _ref,
+                current_clock,
+                event,
+                reasoning=reasoning,
+                actor=actor,
+                metadata=metadata,
+                target_dt=target_dt,
+            )
+
         inbound = inbound_msgs_by_invoice.get(inv.invoice_id)
         outbound = outbound_msgs_by_invoice.get(inv.invoice_id, [])
         has_outbound = len(outbound) > 0
@@ -251,10 +280,40 @@ async def seed_from_generator(
         is_ambiguous = inv.edge_case == "ambiguous_reply"
         is_dispute = inv.edge_case == "disputed_invoice" or inv.status == "disputed"
 
-        # Step 1: Aging: CREATED -> OVERDUE
-        _record_step(
-            orm_inv,
-            ref,
+        paid_date_obj = date.fromisoformat(inv.paid_date) if inv.paid_date else None
+        due_date_obj = date.fromisoformat(inv.due_date)
+        is_early_paid = (
+            inv.status == "paid"
+            and paid_date_obj is not None
+            and paid_date_obj <= due_date_obj
+            and not has_outbound
+            and not inbound
+            and inv.promise_outcome not in ("pending", "kept", "broken")
+        )
+
+        # Early payment directly from CREATED -> RECOVERED without ever becoming overdue
+        if is_early_paid:
+            paid_dt = _dt(f"{inv.paid_date}T11:{(idx * 7) % 60:02d}:00")
+            step(
+                TransitionEvent.PAYMENT_CONFIRMED,
+                reasoning=(
+                    f"Razorpay payment confirmation webhook received for ₹{inv.total_amount:,.0f}; "
+                    "invoice settled on-time before due date without reminders."
+                ),
+                actor="system",
+                metadata={
+                    "event": "payment_confirmed",
+                    "payment_link_id": inv.payment_link_id,
+                    "amount": str(inv.total_amount),
+                    "early_payment": True,
+                },
+                target_dt=paid_dt,
+            )
+            continue
+
+        # Aging step: CREATED -> OVERDUE
+        due_dt = _dt(f"{inv.due_date}T10:{(idx * 5) % 60:02d}:{(idx * 11) % 60:02d}")
+        step(
             TransitionEvent.AGED,
             reasoning=(
                 f"Invoice reached due date ({inv.due_date}) with outstanding "
@@ -262,10 +321,10 @@ async def seed_from_generator(
             ),
             actor="system",
             metadata={"event": "aged", "due_date": str(inv.due_date)},
-            occurred_at=due_dt,
+            target_dt=due_dt,
         )
 
-        # Self-cure payment without nudge
+        # Self-cure payment after aging without nudge
         if (
             inv.status == "paid"
             and not has_outbound
@@ -273,9 +332,7 @@ async def seed_from_generator(
             and inv.promise_outcome not in ("pending", "kept", "broken")
         ):
             paid_dt = _dt(f"{inv.paid_date or inv.due_date}T11:00:00")
-            _record_step(
-                orm_inv,
-                ref,
+            step(
                 TransitionEvent.PAYMENT_CONFIRMED,
                 reasoning=(
                     f"Razorpay webhook confirmed payment of ₹{inv.total_amount:,.0f} "
@@ -287,7 +344,7 @@ async def seed_from_generator(
                     "payment_link_id": inv.payment_link_id,
                     "amount": str(inv.total_amount),
                 },
-                occurred_at=paid_dt,
+                target_dt=paid_dt,
             )
             continue
 
@@ -306,9 +363,7 @@ async def seed_from_generator(
                 minutes=(idx * 7) % 60,
             )
             nudge_dt = due_dt + nudge_offset
-            _record_step(
-                orm_inv,
-                ref,
+            step(
                 TransitionEvent.NUDGE_SENT,
                 reasoning=(
                     "Deterministic scheduler dispatched payment reminder with Razorpay link "
@@ -316,7 +371,7 @@ async def seed_from_generator(
                 ),
                 actor="agent",
                 metadata={"event": "nudge_sent", "attempt_number": 1, "channel": "whatsapp"},
-                occurred_at=nudge_dt,
+                target_dt=nudge_dt,
             )
 
             # Payment after nudge without reply
@@ -326,9 +381,7 @@ async def seed_from_generator(
                 and inv.promise_outcome not in ("pending", "kept", "broken")
             ):
                 paid_dt = _dt(f"{inv.paid_date or inv.due_date}T14:30:00")
-                _record_step(
-                    orm_inv,
-                    ref,
+                step(
                     TransitionEvent.PAYMENT_CONFIRMED,
                     reasoning=(
                         f"Razorpay webhook confirmed payment of ₹{inv.total_amount:,.0f} "
@@ -340,21 +393,19 @@ async def seed_from_generator(
                         "payment_link_id": inv.payment_link_id,
                         "amount": str(inv.total_amount),
                     },
-                    occurred_at=paid_dt,
+                    target_dt=paid_dt,
                 )
                 continue
 
             # Inbound reply processing
             if inbound:
                 reply_dt = _dt(inbound.timestamp)
-                _record_step(
-                    orm_inv,
-                    ref,
+                step(
                     TransitionEvent.REPLY_RECEIVED,
                     reasoning=f'Inbound buyer WhatsApp reply received: "{inbound.message_text}"',
                     actor="system",
                     metadata={"event": "reply_received", "channel": "whatsapp"},
-                    occurred_at=reply_dt,
+                    target_dt=reply_dt,
                 )
 
                 if inbound.intent_label == "promise" or inv.promise_outcome in (
@@ -362,12 +413,10 @@ async def seed_from_generator(
                     "kept",
                     "broken",
                 ):
-                    prom_dt = reply_dt + timedelta(seconds=15)
+                    prom_dt = current_clock + timedelta(seconds=15)
                     conf = 0.90
                     promised_d = inbound.promised_date or inv.notes or str(inv.due_date)
-                    _record_step(
-                        orm_inv,
-                        ref,
+                    step(
                         TransitionEvent.PROMISE_LOGGED,
                         reasoning=(
                             f"Zero-shot classifier extracted promise to pay by {promised_d} "
@@ -380,16 +429,14 @@ async def seed_from_generator(
                             "confidence": conf,
                             "promised_date": str(promised_d),
                         },
-                        occurred_at=prom_dt,
+                        target_dt=prom_dt,
                     )
 
                     if inv.promise_outcome == "kept" or inv.status == "paid":
                         paid_dt = _dt(
                             f"{inv.paid_date or inbound.promised_date or inv.due_date}T12:00:00"
                         )
-                        _record_step(
-                            orm_inv,
-                            ref,
+                        step(
                             TransitionEvent.PAYMENT_CONFIRMED,
                             reasoning=(
                                 f"Payment of ₹{inv.total_amount:,.0f} settled on promised date; "
@@ -401,15 +448,13 @@ async def seed_from_generator(
                                 "promise_status": "kept",
                                 "amount": str(inv.total_amount),
                             },
-                            occurred_at=paid_dt,
+                            target_dt=paid_dt,
                         )
                     elif inv.promise_outcome == "broken":
                         passed_dt = _dt(
                             f"{inbound.promised_date or inv.due_date}T10:00:00"
                         ) + timedelta(days=1)
-                        _record_step(
-                            orm_inv,
-                            ref,
+                        step(
                             TransitionEvent.PROMISE_DATE_PASSED,
                             reasoning=(
                                 f"Promised date ({inbound.promised_date or inv.due_date}) passed "
@@ -417,12 +462,10 @@ async def seed_from_generator(
                             ),
                             actor="agent",
                             metadata={"event": "promise_date_passed"},
-                            occurred_at=passed_dt,
+                            target_dt=passed_dt,
                         )
-                        broken_dt = passed_dt + timedelta(days=3)
-                        _record_step(
-                            orm_inv,
-                            ref,
+                        broken_dt = current_clock + timedelta(days=3)
+                        step(
                             TransitionEvent.PROMISE_BROKEN,
                             reasoning=(
                                 "Grace period expired without settlement; promise marked broken "
@@ -430,14 +473,12 @@ async def seed_from_generator(
                             ),
                             actor="agent",
                             metadata={"event": "promise_broken", "promise_status": "broken"},
-                            occurred_at=broken_dt,
+                            target_dt=broken_dt,
                         )
                 elif is_dispute or inbound.intent_label == "dispute":
-                    disp_dt = reply_dt + timedelta(seconds=15)
+                    disp_dt = current_clock + timedelta(seconds=15)
                     conf = 0.92
-                    _record_step(
-                        orm_inv,
-                        ref,
+                    step(
                         TransitionEvent.DISPUTE_RAISED,
                         reasoning=(
                             f'Buyer indicated billing dispute: "{inbound.message_text}"; '
@@ -449,12 +490,10 @@ async def seed_from_generator(
                             "intent": "dispute",
                             "confidence": conf,
                         },
-                        occurred_at=disp_dt,
+                        target_dt=disp_dt,
                     )
-                    route_dt = disp_dt + timedelta(minutes=5)
-                    _record_step(
-                        orm_inv,
-                        ref,
+                    route_dt = current_clock + timedelta(minutes=5)
+                    step(
                         TransitionEvent.ROUTED_TO_HUMAN,
                         reasoning=(
                             "Dispute routed to merchant billing desk for credit note "
@@ -462,13 +501,11 @@ async def seed_from_generator(
                         ),
                         actor="agent",
                         metadata={"event": "routed_to_human"},
-                        occurred_at=route_dt,
+                        target_dt=route_dt,
                     )
                     if idx % 2 == 0:
-                        res_dt = route_dt + timedelta(days=1)
-                        _record_step(
-                            orm_inv,
-                            ref,
+                        res_dt = current_clock + timedelta(days=1)
+                        step(
                             TransitionEvent.HUMAN_RESOLVED_CLOSED,
                             reasoning=(
                                 "Merchant operator verified billing adjustment and closed dispute."
@@ -479,14 +516,12 @@ async def seed_from_generator(
                                 "resolution": "credit_note_issued",
                                 "actor_role": "billing_manager",
                             },
-                            occurred_at=res_dt,
+                            target_dt=res_dt,
                         )
                 elif is_opt_out or inbound.intent_label == "opt_out":
-                    opt_dt = reply_dt + timedelta(seconds=15)
+                    opt_dt = current_clock + timedelta(seconds=15)
                     conf = 0.95
-                    _record_step(
-                        orm_inv,
-                        ref,
+                    step(
                         TransitionEvent.OPT_OUT_RECEIVED,
                         reasoning=(
                             f'Buyer requested opt-out: "{inbound.message_text}"; '
@@ -498,26 +533,22 @@ async def seed_from_generator(
                             "intent": "opt_out",
                             "confidence": conf,
                         },
-                        occurred_at=opt_dt,
+                        target_dt=opt_dt,
                     )
-                    fin_dt = opt_dt + timedelta(hours=1)
-                    _record_step(
-                        orm_inv,
-                        ref,
+                    fin_dt = current_clock + timedelta(hours=1)
+                    step(
                         TransitionEvent.OPT_OUT_FINALIZED,
                         reasoning=(
                             "Opt-out acknowledged and archived; automated workflow terminated."
                         ),
                         actor="system",
                         metadata={"event": "opt_out_finalized"},
-                        occurred_at=fin_dt,
+                        target_dt=fin_dt,
                     )
                 elif is_ambiguous or inbound.intent_label == "ambiguous":
-                    amb_dt = reply_dt + timedelta(seconds=15)
+                    amb_dt = current_clock + timedelta(seconds=15)
                     conf = 0.45  # Below 70% threshold -> Abstention story
-                    _record_step(
-                        orm_inv,
-                        ref,
+                    step(
                         TransitionEvent.NEEDS_HUMAN,
                         reasoning=(
                             f'Ambiguous reply: "{inbound.message_text}"; abstained below 70% '
@@ -531,13 +562,11 @@ async def seed_from_generator(
                             "threshold": 0.70,
                             "abstained": True,
                         },
-                        occurred_at=amb_dt,
+                        target_dt=amb_dt,
                     )
                     if idx % 3 == 0:
-                        human_dt = amb_dt + timedelta(hours=4)
-                        _record_step(
-                            orm_inv,
-                            ref,
+                        human_dt = current_clock + timedelta(hours=4)
+                        step(
                             TransitionEvent.HUMAN_RESOLVED_RECOVERED,
                             reasoning=(
                                 "Merchant operator spoke with buyer directly, verified transfer, "
@@ -549,14 +578,12 @@ async def seed_from_generator(
                                 "resolution": "manual_transfer_confirmed",
                                 "actor_role": "collections_agent",
                             },
-                            occurred_at=human_dt,
+                            target_dt=human_dt,
                         )
                 elif inbound.intent_label == "objection":
-                    obj_dt = reply_dt + timedelta(seconds=15)
+                    obj_dt = current_clock + timedelta(seconds=15)
                     conf = 0.88
-                    _record_step(
-                        orm_inv,
-                        ref,
+                    step(
                         TransitionEvent.OBJECTION_RECEIVED,
                         reasoning="Buyer requested short extension; re-queued into nudge cycle.",
                         actor="agent",
@@ -565,7 +592,7 @@ async def seed_from_generator(
                             "intent": "objection",
                             "confidence": conf,
                         },
-                        occurred_at=obj_dt,
+                        target_dt=obj_dt,
                     )
 
     await session.flush()

@@ -73,4 +73,3 @@ def buyer_briefer(client: AnthropicClient = Depends(anthropic_client)) -> BuyerB
 def duebot_assistant(client: AnthropicClient = Depends(anthropic_client)) -> DueBotAssistant:
     """Interactive portfolio assistant."""
     return DueBotAssistant(client)
-

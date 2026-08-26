@@ -20,9 +20,7 @@ from backend.tasks.payment import confirm_payment
 logger = structlog.get_logger("duebot.webhooks")
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 
-ALLOWED_SETTLEMENT_EVENTS = frozenset(
-    {"payment_link.paid", "payment.captured", "order.paid"}
-)
+ALLOWED_SETTLEMENT_EVENTS = frozenset({"payment_link.paid", "payment.captured", "order.paid"})
 
 
 @router.post("/razorpay", status_code=status.HTTP_200_OK)

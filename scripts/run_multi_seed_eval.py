@@ -229,9 +229,8 @@ def run_multi_seed_eval(
 
         # 2. DueBot vs Naive (Message Efficiency & Safety Invariants)
         d_rec_naive = (rep_due.recovery_rate - rep_naive.recovery_rate) * 100
-        d_days_naive = (
-            (rep_due.avg_days_to_recovery or 0.0)
-            - (rep_naive.avg_days_to_recovery or 0.0)
+        d_days_naive = (rep_due.avg_days_to_recovery or 0.0) - (
+            rep_naive.avg_days_to_recovery or 0.0
         )
         d_cnt_naive = float(rep_due.total_contacts_sent - rep_naive.total_contacts_sent)
         d_eff_naive = float(rep_due.recovery_per_contact - rep_naive.recovery_per_contact)
@@ -353,18 +352,13 @@ def run_heterogeneity_sweep(
             d_rec.append(rep_d.recovery_rate * 100)
             n_cnt.append(float(rep_n.total_contacts_sent))
             d_cnt.append(float(rep_d.total_contacts_sent))
-            n_dsp.append(
-                float(sum(inv.contacts for inv in sim_naive if inv.status == "disputed"))
-            )
-            d_dsp.append(
-                float(sum(inv.contacts for inv in sim_due if inv.status == "disputed"))
-            )
+            n_dsp.append(float(sum(inv.contacts for inv in sim_naive if inv.status == "disputed")))
+            d_dsp.append(float(sum(inv.contacts for inv in sim_due if inv.status == "disputed")))
 
         # Compute paired differences within seed
         paired_rec_deltas = [d - n for d, n in zip(d_rec, n_rec, strict=True)]
         paired_red_pcts = [
-            (1.0 - d / n) * 100 if n > 0 else 0.0
-            for d, n in zip(d_cnt, n_cnt, strict=True)
+            (1.0 - d / n) * 100 if n > 0 else 0.0 for d, n in zip(d_cnt, n_cnt, strict=True)
         ]
 
         st_nr = compute_stats(n_rec)
@@ -608,7 +602,7 @@ def main() -> None:
             f"{p_str} | {nc:.1f} | {dc:.1f} | **{hr_pred:.1f}% fewer** | {regime} |"
         )
 
-    lakhs_str = f"+₹ {p_none_amt.mean/100000:.2f}L"
+    lakhs_str = f"+₹ {p_none_amt.mean / 100000:.2f}L"
     print("\n### 5. Rigorous Interpretation & Key Claims:")
     print(
         f"1. **Incremental Value Creation (+{p_none_rec.mean:.1f}pp / {lakhs_str} vs No-Agent)**:\n"

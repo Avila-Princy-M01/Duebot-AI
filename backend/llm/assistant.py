@@ -131,7 +131,7 @@ class DueBotAssistant:
         )
 
         user_prompt = (
-            f"Merchant Question: \"{ctx.query}\"\n\n"
+            f'Merchant Question: "{ctx.query}"\n\n'
             f"LIVE DATABASE FACTS:\n"
             f"- Total Invoices: {ctx.total_invoices_count} ({ctx.overdue_count} overdue)\n"
             f"- Amount At Risk: INR {ctx.amount_at_risk_inr}\n"

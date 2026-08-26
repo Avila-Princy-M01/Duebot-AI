@@ -133,6 +133,8 @@ class TransitionEvent(StrEnum):
 VALID_TRANSITIONS: Mapping[InvoiceState, Mapping[TransitionEvent, InvoiceState]] = {
     InvoiceState.CREATED: {
         TransitionEvent.AGED: InvoiceState.OVERDUE,
+        # Early or on-time payment confirmed before invoice passes due date
+        TransitionEvent.PAYMENT_CONFIRMED: InvoiceState.RECOVERED,
     },
     InvoiceState.OVERDUE: {
         TransitionEvent.NUDGE_SENT: InvoiceState.NUDGED,

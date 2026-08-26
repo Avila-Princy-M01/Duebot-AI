@@ -48,9 +48,7 @@ async def test_webhook_unconfigured_secret_fails_closed(
     app.dependency_overrides[get_db] = _override_get_db
     app.dependency_overrides[get_settings] = _override_get_settings
 
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         payload = {"event": "payment_link.paid"}
         body_bytes = json.dumps(payload).encode("utf-8")
         res = await client.post(
@@ -77,7 +75,9 @@ async def test_webhook_payment_link_paid_valid_signature(
             yield s
 
     def _override_get_settings():
-        return Settings(razorpay_webhook_secret=TEST_SECRET, database_url="sqlite+aiosqlite:///:memory:")
+        return Settings(
+            razorpay_webhook_secret=TEST_SECRET, database_url="sqlite+aiosqlite:///:memory:"
+        )
 
     app.dependency_overrides[get_db] = _override_get_db
     app.dependency_overrides[get_settings] = _override_get_settings
@@ -126,9 +126,7 @@ async def test_webhook_payment_link_paid_valid_signature(
         session.add_all([merchant, buyer, invoice])
         await session.commit()
 
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         payload = {
             "entity": "event",
             "account_id": "acc_test",
@@ -180,7 +178,9 @@ async def test_webhook_idempotent_retry_on_already_recovered(
             yield s
 
     def _override_get_settings():
-        return Settings(razorpay_webhook_secret=TEST_SECRET, database_url="sqlite+aiosqlite:///:memory:")
+        return Settings(
+            razorpay_webhook_secret=TEST_SECRET, database_url="sqlite+aiosqlite:///:memory:"
+        )
 
     app.dependency_overrides[get_db] = _override_get_db
     app.dependency_overrides[get_settings] = _override_get_settings
@@ -229,9 +229,7 @@ async def test_webhook_idempotent_retry_on_already_recovered(
         session.add_all([merchant, buyer, invoice])
         await session.commit()
 
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         payload = {
             "entity": "event",
             "event": "payment_link.paid",
@@ -274,14 +272,14 @@ async def test_webhook_invalid_signature_rejected(
             yield s
 
     def _override_get_settings():
-        return Settings(razorpay_webhook_secret=TEST_SECRET, database_url="sqlite+aiosqlite:///:memory:")
+        return Settings(
+            razorpay_webhook_secret=TEST_SECRET, database_url="sqlite+aiosqlite:///:memory:"
+        )
 
     app.dependency_overrides[get_db] = _override_get_db
     app.dependency_overrides[get_settings] = _override_get_settings
 
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         payload = {
             "event": "payment_link.paid",
             "payload": {"payment_link": {"entity": {"id": "plink_fake"}}},
@@ -320,14 +318,14 @@ async def test_webhook_non_settlement_event_ignored(
             yield s
 
     def _override_get_settings():
-        return Settings(razorpay_webhook_secret=TEST_SECRET, database_url="sqlite+aiosqlite:///:memory:")
+        return Settings(
+            razorpay_webhook_secret=TEST_SECRET, database_url="sqlite+aiosqlite:///:memory:"
+        )
 
     app.dependency_overrides[get_db] = _override_get_db
     app.dependency_overrides[get_settings] = _override_get_settings
 
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         payload = {
             "entity": "event",
             "event": "payment_link.cancelled",

@@ -73,4 +73,3 @@ class BuyerBriefOut(BaseModel):
     total_outstanding_inr: str
     open_invoices_count: int
     model: str
-

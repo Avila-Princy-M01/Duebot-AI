@@ -167,7 +167,15 @@ def fallback_intent(reply_text: str, *, as_of: date | None = None) -> ParsedInte
         )
     if any(
         token in lowered
-        for token in ("soon", "will see", "get back", "don't worry", "in process", "dekhta", "noted")
+        for token in (
+            "soon",
+            "will see",
+            "get back",
+            "don't worry",
+            "in process",
+            "dekhta",
+            "noted",
+        )
     ):
         return ParsedIntent(
             intent=ReplyIntent.AMBIGUOUS,
@@ -229,5 +237,7 @@ class ReplyParser:
 
         The buyer text is placed only in the user turn, never in the system prompt.
         """
-        result, _ = await self.parse_with_meta(reply_text, as_of=as_of, allow_fallback=allow_fallback)
+        result, _ = await self.parse_with_meta(
+            reply_text, as_of=as_of, allow_fallback=allow_fallback
+        )
         return result

@@ -51,9 +51,7 @@ async def list_audit(
         count_stmt = count_stmt.where(AuditLog.occurred_at <= date_to)
     total = await session.scalar(count_stmt)
     rows = await session.execute(
-        stmt.order_by(AuditLog.occurred_at.desc(), AuditLog.id.desc())
-        .offset(offset)
-        .limit(limit)
+        stmt.order_by(AuditLog.occurred_at.desc(), AuditLog.id.desc()).offset(offset).limit(limit)
     )
     return SuccessEnvelope(
         data=[AuditEntryOut.model_validate(row) for row in rows.scalars()],

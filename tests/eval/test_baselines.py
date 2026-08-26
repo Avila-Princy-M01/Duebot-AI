@@ -92,10 +92,7 @@ def test_dispute_policy_gate_blocks_contacts_mid_timeline_and_pre_existing() -> 
         clock_dt = datetime.combine(as_of, time(10, 0), tzinfo=UTC)
         decision = can_contact(inv, inv.history, as_of=clock_dt)
         assert not decision.allowed
-        assert (
-            "disputed" in decision.reason.lower()
-            or "human review" in decision.reason.lower()
-        )
+        assert "disputed" in decision.reason.lower() or "human review" in decision.reason.lower()
 
 
 async def test_baseline_metrics_api_endpoint_refresh_and_grouping(client: AsyncClient) -> None:
@@ -132,4 +129,3 @@ async def test_baseline_metrics_api_endpoint_refresh_and_grouping(client: AsyncC
     run_id_3 = data4[0]["run_id"]
     assert run_id_3 != run_id_2
     assert all(row["run_id"] == run_id_3 for row in data4)
-

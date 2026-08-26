@@ -82,3 +82,17 @@ def test_can_transition_explains_success() -> None:
     ok, reason = can_transition(InvoiceState.CREATED, TransitionEvent.AGED)
     assert ok is True
     assert "overdue" in reason
+
+
+def test_early_payment_from_created_to_recovered() -> None:
+    """An invoice paid before or on due date transitions directly CREATED -> RECOVERED."""
+    invoice = _inv(InvoiceState.CREATED)
+    assert is_valid_transition(InvoiceState.CREATED, TransitionEvent.PAYMENT_CONFIRMED) is True
+    result = transition(
+        invoice,
+        TransitionEvent.PAYMENT_CONFIRMED,
+        reasoning="early payment settled",
+    )
+    assert result.new_state is InvoiceState.RECOVERED
+    assert result.audit_entry.from_state is InvoiceState.CREATED
+    assert result.audit_entry.to_state is InvoiceState.RECOVERED
