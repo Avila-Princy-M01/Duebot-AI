@@ -46,7 +46,7 @@ async def list_invoices(
     days_overdue_max: int | None = None,
     merchant_id: str | None = None,
     split: str | None = None,
-    limit: int = Query(default=50, ge=1, le=200),
+    limit: int = Query(default=50, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
     session: AsyncSession = Depends(get_db),
 ) -> SuccessEnvelope[list[InvoiceOut]]:
