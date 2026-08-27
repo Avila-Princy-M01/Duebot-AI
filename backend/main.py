@@ -48,9 +48,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.session_factory = session_factory(engine)
 
     # Auto-seed initial demo dataset if database is empty on deployment
+    from sqlalchemy import func, select
+
     from backend.data.seed import seed_from_generator
     from backend.models.invoice import Invoice
-    from sqlalchemy import func, select
 
     async with app.state.session_factory() as session:
         try:
