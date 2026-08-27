@@ -10,6 +10,11 @@
 
 > 🚀 **Live Production Demo**: [https://independent-gentleness-production-d3fb.up.railway.app/](https://independent-gentleness-production-d3fb.up.railway.app/)
 
+#### ⚡ Try These 3 Things in the Live Demo:
+1. **[Live Audit Ledger & Proof (`/audit`)](https://independent-gentleness-production-d3fb.up.railway.app/audit)**: Click **"Chain Verified ✓"** to inspect the mathematically verified SHA-256 Merkle chain linking all state transitions.
+2. **[Honest Recovery & Baselines (`/metrics`)](https://independent-gentleness-production-d3fb.up.railway.app/metrics)**: Toggle between `no_agent` (74.4% organic self-cure), `naive_cadence` (spam dunning), and `duebot` (+4.9pp honest lift with 61.5% fewer messages).
+3. **[Cryptographic Verify API (`/api/audit/verify`)](https://duebot-ai-production.up.railway.app/api/audit/verify)**: Query the live endpoint to inspect the cryptographic JSON proof walking the hash chain from genesis root to chain tip.
+
 An autonomous, policy-gated collections agent for overdue **B2B receivables**, built for the Razorpay AI Buildathon 2026 (Track 03 — AI Revenue Recovery).
 
 ---
