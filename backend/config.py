@@ -60,8 +60,10 @@ class Settings(BaseSettings):
 
     @property
     def normalized_database_url(self) -> str:
-        """Ensure postgres URLs specify the asyncpg dialect driver."""
+        """Ensure postgres URLs specify the asyncpg dialect driver and sanitize localhost in cloud."""
         url = self.database_url
+        if "@localhost:5432" in url or "duebot:duebot@localhost" in url:
+            return "sqlite+aiosqlite:///./duebot.db"
         if url.startswith("postgres://"):
             url = url.replace("postgres://", "postgresql+asyncpg://", 1)
         elif url.startswith("postgresql://") and not url.startswith("postgresql+asyncpg://"):

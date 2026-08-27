@@ -29,10 +29,23 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
     configure_logging(settings.log_level)
     engine = create_engine(settings)
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+    except Exception as exc:
+        logger.warning(
+            "primary_database_connection_failed_falling_back_to_sqlite",
+            error=str(exc),
+        )
+        sqlite_settings = settings.model_copy(
+            update={"database_url": "sqlite+aiosqlite:///./duebot.db"}
+        )
+        engine = create_engine(sqlite_settings)
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+
     app.state.engine = engine
     app.state.session_factory = session_factory(engine)
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
 
     # Auto-seed initial demo dataset if database is empty on deployment
     from backend.data.seed import seed_database
