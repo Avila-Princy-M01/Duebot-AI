@@ -48,7 +48,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.session_factory = session_factory(engine)
 
     # Auto-seed initial demo dataset if database is empty on deployment
-    from backend.data.seed import seed_database
+    from backend.data.seed import seed_from_generator
     from backend.models.invoice import Invoice
     from sqlalchemy import func, select
 
@@ -58,7 +58,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             count = count_res.scalar() or 0
             if count == 0:
                 logger.info("auto_seeding_empty_database", num_invoices=260)
-                await seed_database(session, num_invoices=260)
+                await seed_from_generator(session, num_invoices=260)
                 await session.commit()
         except Exception as err:
             logger.warning("auto_seed_skipped_or_failed", error=str(err))

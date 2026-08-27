@@ -801,4 +801,6 @@ if __name__ == "__main__":
     asyncio.run(_cli_main())
 
 
-__all__ = ["seed_from_generator", "BuyerMessage"]
+seed_database = seed_from_generator
+
+__all__ = ["seed_from_generator", "seed_database", "BuyerMessage"]
