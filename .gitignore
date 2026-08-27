@@ -31,6 +31,8 @@ frontend/out/
 .DS_Store
 Thumbs.db
 *.swp
+.cursorrules
+.embedder/
 
 # Scratch / diagnostics
 scratch/
