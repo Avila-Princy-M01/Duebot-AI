@@ -458,7 +458,7 @@ class DueBotDataGenerator:
                 if status == "overdue":
                     promise_outcome = self.rng.choices(
                         ["none", "pending", "kept", "broken"],
-                        weights=[0.35, 0.15, 0.30, 0.20],
+                        weights=[0.30, 0.22, 0.28, 0.20],
                         k=1,
                     )[0]
 
@@ -642,7 +642,23 @@ class DueBotDataGenerator:
     def generate_messages(self) -> list[BuyerMessage]:
         buyers_by_id = {b.buyer_id: b for b in self.buyers}
 
+        # Keep a small cohort of 5 newly overdue invoices without prior outbound messages
+        # so they remain in the active OVERDUE queue waiting for their first nudge in the live demo.
+        fresh_overdue_set: set[str] = set()
+        overdue_candidates = [
+            i.invoice_id
+            for i in self.invoices
+            if i.status == "overdue"
+            and i.edge_case == "none"
+            and i.promise_outcome == "none"
+            and i.days_overdue <= 10
+        ]
+        for inv_id in overdue_candidates[:5]:
+            fresh_overdue_set.add(inv_id)
+
         for inv in self.invoices:
+            if inv.invoice_id in fresh_overdue_set:
+                continue
             if inv.status not in ("overdue", "partial", "disputed") and inv.edge_case not in (
                 "paid_during_nudge_sequence",
             ):

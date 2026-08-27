@@ -9,7 +9,9 @@
 
 An AI collections agent for overdue **B2B receivables**, built for the Razorpay AI Buildathon 2026 (Track 03 — AI Revenue Recovery).
 
-DueBot monitors a merchant's overdue invoices, decides **when** to nudge (WhatsApp-first, hard weekly contact caps), parses buyer replies into structured intents, tracks promise-to-pay dates, and escalates when a promise breaks or when model confidence is low. It **never moves money**. It only requests payment via Razorpay Payment Links. Every state transition is recorded in an append-only audit log.
+> **The Honest Attribution Guarantee**: In enterprise B2B receivables, naive cadence tools claim 100% credit for money that would have arrived anyway. We measured: organic self-cure recovers **74.4% on its own**. DueBot delivers a statistically verified **+4.9pp net recovery lift** (79.3% vs 74.4%, p = 0.003) while sending **61.5% fewer messages** and **zero harassment touches** on disputed receivables.
+
+DueBot monitors a merchant's overdue invoices, decides **when** to nudge (WhatsApp-first, hard weekly contact caps), parses buyer replies into structured intents, tracks promise-to-pay dates, and escalates when a promise breaks or when model confidence is low. It **never moves money** directly — it only requests payment via non-custodial Razorpay Payment Links. Every state transition is cryptographically bound into an immutable SHA-256 hash chain.
 
 **DueBot** couples a deterministic state machine and policy engine with an LLM periphery for promise extraction, backed by an empirical three-way baseline evaluation.
 
@@ -51,7 +53,7 @@ copy .env.example .env
 uvicorn backend.main:app --reload --port 8000
 
 # 3. Seed demo dataset (in a separate terminal)
-python scripts/seed_db.py --num-invoices 80
+python -m backend.data.seed --num-invoices 260
 
 # 4. Start frontend dashboard
 cd frontend && npm install && npm run dev
@@ -97,7 +99,9 @@ In autonomous financial systems, an "append-only log" is an empty promise unless
 ### 1. Canonical Row Hashing Formula
 Every block calculates its `row_hash` as the SHA-256 digest of a strictly canonicalized JSON string containing its fields and the previous block's hash:
 
-$$\text{row\_hash}_i = \text{SHA-256}\Big(\text{canonical\_json}\big(\text{actor}_i, \text{from\_state}_i, \text{invoice\_id}_i, \text{metadata}_i, \text{occurred\_at}_i, \text{prev\_hash}_i, \text{reasoning}_i, \text{to\_state}_i\big)\Big)$$
+```text
+row_hash[i] = SHA-256( canonical_json( actor, from_state, invoice_id, metadata, occurred_at, prev_hash[i-1], reasoning_summary, to_state ) )
+```
 
 Where `canonical_json` serializes the dictionary with sorted keys, ISO-8601 UTC timestamps, and compact separators (`","`, `":"`):
 
@@ -121,14 +125,14 @@ Auditors, merchants, and compliance systems can verify the entire historical log
 {
   "data": {
     "valid": true,
-    "rows_verified": 492,
+    "rows_verified": 536,
     "genesis_hash": "0000000000000000000000000000000000000000000000000000000000000000",
-    "latest_hash": "f8a92b3c1097e8894df07a4a1599d284a1e967a188bcde190a424263f350c761",
-    "verified_at": "2026-08-26T16:38:00Z",
+    "latest_hash": "0fac7b941efd2c85...",
+    "verified_at": "2026-08-27T15:20:00Z",
     "error": null
   },
   "meta": {
-    "timestamp": "2026-08-26T16:38:00Z",
+    "timestamp": "2026-08-27T15:20:00Z",
     "request_id": "req-verify-001"
   }
 }
@@ -161,7 +165,7 @@ We make the system boundaries explicit and transparent:
 | **LLM Periphery** | **100% Real** | Structured tool-use intent parsing (`ReplyParser`) and deterministic fallback classifier (`fallback_intent`). |
 | **API & Database** | **100% Real** | FastAPI backend, SQLite/PostgreSQL with async SQLAlchemy, append-only audit trail, and Razorpay webhook endpoint (`POST /api/webhooks/razorpay` — verified against Razorpay's documented HMAC signature scheme and payload shapes; not yet exercised against live production traffic). |
 | **Merchant Dashboard** | **100% Real** | Next.js 14 dashboard with live aging filters, interactive WhatsApp simulator, and audit log inspector. |
-| **Buyer Response Dynamics** | **Modeled** | Driven by a shared, neutral credit-risk and fatigue model (`shared_should_settle` in `baselines.py`) across a held-out test split ($n=71$). |
+| **Buyer Response Dynamics** | **Modeled** | Driven by a shared, neutral credit-risk and fatigue model (`shared_should_settle` in `baselines.py`) across a held-out test split (n = 71). |
 | **WhatsApp Delivery** | **Simulated Transport** | Simulated outbound/inbound delivery logged to the database and visualized in the interactive inbox. Real WhatsApp Business API uses an identical adapter interface. |
 | **Razorpay Payment Links** | **Test Mode / Mock Fallback** | Generates authentic test-mode links when API credentials are provided, or deterministic mock URLs (`https://rzp.io/l/...`) for offline local runs. Never initiates direct debits. |
 
@@ -180,10 +184,10 @@ Reproducible via `python scripts/run_eval.py` and `python scripts/run_multi_seed
 | **`duebot` (Policy-aware agent)** | **79.3% ± 5.9%** | **₹ 74.92L** | **5.8 ± 1.9 days** | **21.5 ± 6.5 (61.5% fewer)** | **Routes to `HUMAN_REVIEW` (0.0 touches)** |
 
 ### Key Empirical Findings Across 10 Generator Seeds (~710 Invoices)
-1. **Incremental Cash Recovery (+4.9pp / +₹4.76L vs No-Agent)**: DueBot captures **$+4.93\% \pm 3.93\%$ higher recovery** ($+₹4,76,342 \pm ₹4,28,090$, paired $t = +3.96, p_t = 0.0033$, exact sign test $p = 0.0039$) over organic self-cure by proactively recovering receivables from responsive buyers.
+1. **Incremental Cash Recovery (+4.9pp / +₹4.76L vs No-Agent)**: DueBot captures **+4.93% ± 3.93% higher recovery** (+₹4,76,342 ± ₹4,28,090, paired t = +3.96, p = 0.0033, exact sign test p = 0.0039) over organic self-cure by proactively recovering receivables from responsive buyers.
 2. **100% Dispute Defect Protection (0.0 vs 5.3–13.4 spam touches)**: In B2B collections, dunning a disputed invoice is a critical compliance and customer-relationship defect. DueBot's `can_contact()` policy gate unconditionally halts outreach (**0.0 touches across 100% of runs**), eliminating the 5.3 to 13.4 harassment touches that a blind cadence delivers across all contact budgets.
-3. **46.4% to 61.5% Message Reduction Across All Budgets**: At matched touch budgets (`MAX_NAIVE = 3`), DueBot sends **46.4% fewer messages** (21.5 vs 40.1 touches) by selectively abstaining on organic self-cures and active promises, rising to **61.5% fewer messages** under default cadence (paired $t = +31.20, p_t < 0.0001$; absolute reduction of $-34.1 \pm 9.8$ touches, paired $t = -11.04, p_t < 0.0001$, exact sign test $p = 0.0020$).
-4. **Faster and Quieter (Tighter Cadence Bounded by Policy)**: Paired resolution acceleration of **$-0.50 \pm 0.10\text{ days}$ ($95\%\text{ CI}: [-0.57\text{d}, -0.43\text{d}]$, $p < 0.001$, exact sign test $p = 0.0020$)** from an adaptive 3-day interval made safe by DueBot's `can_contact()` weekly and sequence caps — resolving cash faster while sending fewer total messages.
+3. **46.4% to 61.5% Message Reduction Across All Budgets**: At matched touch budgets (`MAX_NAIVE = 3`), DueBot sends **46.4% fewer messages** (21.5 vs 40.1 touches) by selectively abstaining on organic self-cures and active promises, rising to **61.5% fewer messages** under default cadence (paired t = +31.20, p < 0.0001; absolute reduction of -34.1 ± 9.8 touches, paired t = -11.04, p < 0.0001, exact sign test p = 0.0020).
+4. **Faster and Quieter (Tighter Cadence Bounded by Policy)**: Paired resolution acceleration of **-0.50 ± 0.10 days (95% CI: [-0.57d, -0.43d], p < 0.001, exact sign test p = 0.0020)** from an adaptive 3-day interval made safe by DueBot's `can_contact()` weekly and sequence caps — resolving cash faster while sending fewer total messages.
 
 ---
 
@@ -203,7 +207,7 @@ Reproducible via `python scripts/run_eval.py` and `python scripts/run_multi_seed
 | Choice | Why |
 |--------|-----|
 | Hand-rolled state machine | Legible under interview; no LangChain agent loop for money-adjacent actions |
-| Strictly monotonic audit graph | Every audit trail is mathematically proven to be a connected graph chain ($s_0 = \text{created}, s_{i}.\text{to} = s_{i+1}.\text{from}, s_n = \text{invoice.state}$) with monotonic timestamps ($t_{i} < t_{i+1}$) |
+| Strictly monotonic audit graph | Every audit trail is mathematically proven to be a connected graph chain (`s_0 = created`, `s_{i}.to = s_{i+1}.from`, `s_n = invoice.state`) with monotonic timestamps (`t_i < t_{i+1}`) |
 | Postgres / SQLite | Structured invoices/promises/audit — not a retrieval problem |
 | Poll loop / task triggers | Throughput does not justify distributed queue overhead |
 | Claude / Gemini tool-use | Strict schema enforcement; never regex-parse model prose |
