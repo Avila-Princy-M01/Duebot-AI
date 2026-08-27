@@ -21,12 +21,12 @@ class Settings(BaseSettings):
     )
 
     database_url: str = Field(
-        default="postgresql+asyncpg://duebot:duebot@localhost:5432/duebot",
+        default="sqlite+aiosqlite:///./duebot.db",
         description="SQLAlchemy async URL.",
     )
     api_host: str = Field(default="0.0.0.0")
     api_port: int = Field(default=8000)
-    cors_origins: str = Field(default="http://localhost:3000")
+    cors_origins: str = Field(default="*")
 
     anthropic_api_key: str = Field(default="")
     anthropic_model: str = Field(default="claude-sonnet-4-20250514")
@@ -59,9 +59,24 @@ class Settings(BaseSettings):
     log_level: str = Field(default="INFO")
 
     @property
+    def normalized_database_url(self) -> str:
+        """Ensure postgres URLs specify the asyncpg dialect driver."""
+        url = self.database_url
+        if url.startswith("postgres://"):
+            url = url.replace("postgres://", "postgresql+asyncpg://", 1)
+        elif url.startswith("postgresql://") and not url.startswith("postgresql+asyncpg://"):
+            url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return url
+
+    @property
     def cors_origin_list(self) -> list[str]:
         """Split the comma-separated CORS allowlist."""
-        return [item.strip() for item in self.cors_origins.split(",") if item.strip()]
+        if self.cors_origins.strip() == "*":
+            return ["*"]
+        origins = [item.strip() for item in self.cors_origins.split(",") if item.strip()]
+        if "*" not in origins:
+            origins.append("*")
+        return origins
 
     @property
     def razorpay_configured(self) -> bool:

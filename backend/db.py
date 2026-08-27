@@ -24,11 +24,11 @@ def create_engine(settings: Settings | None = None) -> AsyncEngine:
     """Create an async engine from settings."""
     cfg = settings or get_settings()
     kwargs: dict[str, object] = {"echo": False}
-    if cfg.database_url.startswith("sqlite"):
+    if cfg.normalized_database_url.startswith("sqlite"):
         kwargs["connect_args"] = {"check_same_thread": False}
-        if ":memory:" in cfg.database_url:
+        if ":memory:" in cfg.normalized_database_url:
             kwargs["poolclass"] = StaticPool
-    return create_async_engine(cfg.database_url, **kwargs)
+    return create_async_engine(cfg.normalized_database_url, **kwargs)
 
 
 def session_factory(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:

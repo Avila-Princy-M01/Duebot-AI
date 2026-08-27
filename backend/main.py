@@ -31,9 +31,24 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     engine = create_engine(settings)
     app.state.engine = engine
     app.state.session_factory = session_factory(engine)
-    if settings.database_url.startswith("sqlite"):
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    # Auto-seed initial demo dataset if database is empty on deployment
+    from backend.data.seed import seed_database
+    from backend.models.invoice import Invoice
+    from sqlalchemy import func, select
+
+    async with app.state.session_factory() as session:
+        try:
+            count_res = await session.execute(select(func.count(Invoice.invoice_id)))
+            count = count_res.scalar() or 0
+            if count == 0:
+                logger.info("auto_seeding_empty_database", num_invoices=260)
+                await seed_database(session, num_invoices=260)
+                await session.commit()
+        except Exception as err:
+            logger.warning("auto_seed_skipped_or_failed", error=str(err))
 
     poll_task: asyncio.Task[None] | None = None
     if settings.enable_poller:
