@@ -41,3 +41,20 @@ async def test_create_and_list_merchant(client: AsyncClient) -> None:
     listed = await client.get("/api/merchants")
     assert listed.status_code == 200
     assert listed.json()["meta"]["total_count"] >= 1
+
+
+@pytest.mark.asyncio
+async def test_list_invoices_state_filter(client: AsyncClient) -> None:
+    """GET /api/invoices?state=... filters specifically on the 11-state machine state."""
+    res_all = await client.get("/api/invoices?limit=200")
+    assert res_all.status_code == 200
+
+    res_nudged = await client.get("/api/invoices?state=nudged")
+    assert res_nudged.status_code == 200
+    for inv in res_nudged.json()["data"]:
+        assert inv["state"] == "nudged"
+
+    res_overdue = await client.get("/api/invoices?state=overdue")
+    assert res_overdue.status_code == 200
+    for inv in res_overdue.json()["data"]:
+        assert inv["state"] == "overdue"

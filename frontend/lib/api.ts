@@ -29,16 +29,26 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export async function listInvoices(params?: {
+  state?: string;
   status?: string;
   risk_tier?: string;
+  merchant_id?: string;
+  days_overdue_min?: number;
+  days_overdue_max?: number;
+  split?: string;
   limit?: number;
   offset?: number;
 }): Promise<Envelope<InvoiceRow[]>> {
   const query = new URLSearchParams();
   query.set("limit", String(params?.limit ?? 500));
   if (params?.offset !== undefined) query.set("offset", String(params?.offset));
+  if (params?.state) query.set("state", params.state);
   if (params?.status) query.set("status", params.status);
   if (params?.risk_tier) query.set("risk_tier", params.risk_tier);
+  if (params?.merchant_id) query.set("merchant_id", params.merchant_id);
+  if (params?.days_overdue_min !== undefined) query.set("days_overdue_min", String(params.days_overdue_min));
+  if (params?.days_overdue_max !== undefined) query.set("days_overdue_max", String(params.days_overdue_max));
+  if (params?.split) query.set("split", params.split);
   return request<Envelope<InvoiceRow[]>>(`/api/invoices?${query.toString()}`);
 }
 

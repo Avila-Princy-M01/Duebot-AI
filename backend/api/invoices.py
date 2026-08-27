@@ -40,6 +40,7 @@ router = APIRouter(prefix="/invoices", tags=["invoices"])
 
 @router.get("")
 async def list_invoices(
+    state: str | None = None,
     status: str | None = None,
     risk_tier: str | None = None,
     days_overdue_min: int | None = None,
@@ -53,6 +54,9 @@ async def list_invoices(
     """Filterable invoice list."""
     stmt = select(Invoice)
     count_stmt = select(func.count()).select_from(Invoice)
+    if state:
+        stmt = stmt.where(Invoice.state == state)
+        count_stmt = count_stmt.where(Invoice.state == state)
     if status:
         stmt = stmt.where(Invoice.status == status)
         count_stmt = count_stmt.where(Invoice.status == status)

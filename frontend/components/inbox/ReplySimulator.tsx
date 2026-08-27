@@ -22,7 +22,7 @@ export function ReplySimulator({ onReplyInjected }: ReplySimulatorProps) {
   const [result, setResult] = useState<string | null>(null);
 
   useEffect(() => {
-    void listInvoices({ status: "nudged" })
+    void listInvoices({ state: "nudged" })
       .then((res) => {
         const first = res.data?.[0] ?? null;
         if (first?.invoice_id) {
