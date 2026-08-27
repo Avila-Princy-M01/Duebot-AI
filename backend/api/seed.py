@@ -15,7 +15,7 @@ router = APIRouter(tags=["seed"])
 @router.post("/seed")
 async def seed(
     session: AsyncSession = Depends(get_db),
-    num_invoices: int = 80,
+    num_invoices: int = 260,
     seed: int = 42,
 ) -> SuccessEnvelope[dict[str, int]]:
     """Generate and insert a reproducible synthetic batch."""

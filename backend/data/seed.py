@@ -766,4 +766,39 @@ async def seed_from_generator(
     }
 
 
+async def _cli_main() -> None:
+    import argparse
+
+    from backend.db import create_engine, session_factory
+
+    parser = argparse.ArgumentParser(description="Seed DueBot database from synthetic generator.")
+    parser.add_argument(
+        "--num-invoices",
+        type=int,
+        default=260,
+        help="Number of invoices to generate (default: 260)",
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=42,
+        help="Deterministic generator seed (default: 42)",
+    )
+    args = parser.parse_args()
+
+    engine = create_engine()
+    factory = session_factory(engine)
+    async with factory() as session:
+        counts = await seed_from_generator(session, num_invoices=args.num_invoices, seed=args.seed)
+        await session.commit()
+        print(f"Successfully seeded DueBot database: {counts}")
+    await engine.dispose()
+
+
+if __name__ == "__main__":
+    import asyncio
+
+    asyncio.run(_cli_main())
+
+
 __all__ = ["seed_from_generator", "BuyerMessage"]

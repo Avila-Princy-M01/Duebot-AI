@@ -142,7 +142,7 @@ export async function resolveInvoice(
 }
 
 export async function seedDemo(): Promise<Envelope<Record<string, number>>> {
-  return request("/api/seed?num_invoices=80&seed=42", { method: "POST" });
+  return request("/api/seed?num_invoices=260&seed=42", { method: "POST" });
 }
 
 export async function askAssistant(params: {
