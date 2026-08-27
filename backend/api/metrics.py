@@ -43,6 +43,7 @@ class _MetricInv:
         self.promise_outcome = inv.promise_outcome
 
 
+@router.get("")
 @router.get("/recovery")
 async def recovery_metrics(
     split: str = Query(default="test"),
