@@ -390,9 +390,9 @@ sequenceDiagram
 Two different kinds of correctness are being proven here, and they're kept separate:
 
 - **Unit/integration tests** prove the code does what it's supposed to (`engine/` 95%+, `llm/` 80%+ with the API mocked, `api/` 85%+). These run in CI on every commit.
-- **The eval harness** (`scripts/run_eval.py`) benchmarks the product across a held-out generator dataset (`split=test`, $n=71$), driving the real deterministic engine (`can_contact`, `transition`, `next_action_at`, `fallback_intent`) day-by-day.
+- **The eval harness** (`scripts/run_eval.py`) benchmarks the product across a held-out generator dataset (`split=test`, n=71), driving the real deterministic engine (`can_contact`, `transition`, `next_action_at`, `fallback_intent`) day-by-day.
 
-**The eval harness runs three conditions over the exact same held-out test split ($n=71$)** and reports 30/60/90-day recovery rate, promise-kept rate, false-escalation rate, total contacts, and capital efficiency for each:
+**The eval harness runs three conditions over the exact same held-out test split (n=71)** and reports 30/60/90-day recovery rate, promise-kept rate, false-escalation rate, total contacts, and capital efficiency for each:
 
 1. **No intervention (`no_agent`)** — what recovers with zero follow-up (the self-cure floor).
 2. **Naive fixed-cadence reminder (`naive_cadence`)** — a deterministic "nudge every 7 days" baseline without policy or dispute checks.

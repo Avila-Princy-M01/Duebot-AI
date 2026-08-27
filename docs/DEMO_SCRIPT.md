@@ -151,7 +151,7 @@ cd frontend && npm run dev
 **Spoken Script (Word-for-Word):**
 > *"Finally, does the policy engine actually work? We benchmarked DueBot against a No-Agent organic baseline and a Naive 7-day spam cadence across 10 generator seeds and 710 test invoices.*
 >
-> 1. ***Incremental Cash Recovery**: DueBot delivers **+4.9 percentage points higher recovery (+₹4.76 Lakhs)** over organic self-cure alone ($p < 0.01$).*
+> 1. ***Incremental Cash Recovery**: DueBot delivers **+4.9 percentage points higher recovery (+₹4.76 Lakhs)** over organic self-cure alone (p < 0.01).*
 > 2. ***100% Dispute Defect Protection**: While blind cadences spam disputed accounts up to 13.4 times, DueBot delivers **zero harassment touches (0.0)** across 100% of runs.*
 > 3. ***61.5% Fewer Messages**: DueBot pauses when buyers promise to pay or self-cure, cutting contact fatigue by **61.5%** while recovering cash 12 hours faster."*
 
