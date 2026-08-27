@@ -7,13 +7,30 @@
 [![Next.js: 14](https://img.shields.io/badge/Next.js-14-black.svg)](https://nextjs.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-An AI collections agent for overdue **B2B receivables**, built for the Razorpay AI Buildathon 2026 (Track 03 — AI Revenue Recovery).
+An autonomous, policy-gated collections agent for overdue **B2B receivables**, built for the Razorpay AI Buildathon 2026 (Track 03 — AI Revenue Recovery).
 
-> **The Honest Attribution Guarantee**: In enterprise B2B receivables, naive cadence tools claim 100% credit for money that would have arrived anyway. We measured: organic self-cure recovers **74.4% on its own**. DueBot delivers a statistically verified **+4.9pp net recovery lift** (79.3% vs 74.4%, p = 0.003) while sending **61.5% fewer messages** and **zero harassment touches** on disputed receivables.
+---
 
-DueBot monitors a merchant's overdue invoices, decides **when** to nudge (WhatsApp-first, hard weekly contact caps), parses buyer replies into structured intents, tracks promise-to-pay dates, and escalates when a promise breaks or when model confidence is low. It **never moves money** directly — it only requests payment via non-custodial Razorpay Payment Links. Every state transition is cryptographically bound into an immutable SHA-256 hash chain.
+## 🎯 The Core Thesis: Honest Recovery Attribution & Quieter Collections
 
-**DueBot** couples a deterministic state machine and policy engine with an LLM periphery for promise extraction, backed by an empirical three-way baseline evaluation.
+Most AI collections tools claim 100% credit for every invoice paid after a reminder. In enterprise B2B receivables, that is statistically false — **74.4% of overdue invoices self-cure organically without any agent intervention**.
+
+DueBot was built and evaluated against a real 3-way baseline (`no_agent` organic baseline vs `naive_cadence` blind dunning vs `duebot` policy agent) across 10 deterministic random seeds (~710 test invoices):
+
+| Metric | `no_agent` (Organic Baseline) | `naive_cadence` (Blind Cadence) | **`duebot` (Policy-Gated Agent)** |
+| :--- | :--- | :--- | :--- |
+| **Recovery Rate (%)** | 74.4% ± 7.8% | 78.5% ± 6.3% | **79.3% ± 5.9% (+4.9pp lift, p = 0.003)** |
+| **Messages Sent** | 0.0 touches | 55.6 ± 15.3 touches | **21.5 ± 6.5 touches (61.5% fewer)** |
+| **Disputed Outreach** | 0.0 touches | 13.4 ± 8.6 spam touches | **0.0 touches (100% defect protection)** |
+| **Avg Days to Recover** | 5.9 ± 2.0 days | 6.3 ± 1.9 days | **5.8 ± 1.9 days (-0.5d acceleration)** |
+| **Settlement Mechanism** | Manual / Bank Transfer | Blind email/SMS blast | **Non-Custodial Razorpay Payment Links** |
+| **Audit Trail** | None | Ephemeral logs | **SHA-256 Cryptographic Hash Chain** |
+
+### Why This Matters to B2B Merchants:
+- **Honest Attribution (+4.9pp Lift, p = 0.0033)**: We measure incremental recovery lift over doing nothing (+₹4.76L per portfolio), separating true agent intervention from baseline organic cash flow.
+- **61.5% Fewer Messages**: Replaces blind spam with contextual WhatsApp outreach, hard weekly contact caps, and promise-aware cooldown windows.
+- **Zero Dispute Harassment**: The deterministic `can_contact()` policy gate unconditionally halts outreach on disputed accounts, routing them to Human Review with structured reasoning.
+- **Non-Custodial Settlement**: Never moves money directly; requests settlement via 1-click Razorpay Payment Links (UPI, Netbanking, NEFT).
 
 ---
 
