@@ -97,6 +97,17 @@ def create_app() -> FastAPI:
     app.include_router(seed_router, prefix="/api")
     app.include_router(webhooks_router, prefix="/api")
 
+    @app.get("/", tags=["root"])
+    async def root() -> dict[str, object]:
+        return {
+            "name": "DueBot AI Revenue Recovery API",
+            "track": "Track 03 — AI Revenue Recovery (Razorpay AI Buildathon 2026)",
+            "status": "online",
+            "docs": "/docs",
+            "health": "/api/health",
+            "version": "0.1.0",
+        }
+
     @app.exception_handler(NotFoundError)
     async def not_found_handler(_request: Request, exc: NotFoundError) -> JSONResponse:
         body = ErrorEnvelope(error=ErrorBody(code="not_found", message=str(exc)))
