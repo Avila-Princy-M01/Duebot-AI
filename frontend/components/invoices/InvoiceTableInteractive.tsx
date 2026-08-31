@@ -31,6 +31,9 @@ export function InvoiceTableInteractive({ initialInvoices }: InvoiceTableInterac
   const [invoices, setInvoices] = useState<InvoiceRow[]>(initialInvoices);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [agingFilter, setAgingFilter] = useState<string>("ALL");
+  const [riskFilter, setRiskFilter] = useState<string>("ALL");
+  const [sortBy, setSortBy] = useState<string>("default");
   const [edgeFilter, setEdgeFilter] = useState<string>("ALL");
   const [activeNudgeId, setActiveNudgeId] = useState<string | null>(null);
 
@@ -44,25 +47,62 @@ export function InvoiceTableInteractive({ initialInvoices }: InvoiceTableInterac
       .catch(() => {});
   };
 
-  const filtered = invoices.filter((inv) => {
-    const needle = search.toLowerCase().trim();
-    const matchesSearch =
-      needle === "" ||
-      inv.invoice_number.toLowerCase().includes(needle) ||
-      inv.buyer_id.toLowerCase().includes(needle) ||
-      inv.buyer_company_name.toLowerCase().includes(needle) ||
-      inv.buyer_contact_name.toLowerCase().includes(needle) ||
-      inv.invoice_id.toLowerCase().includes(needle);
+  const getAgingBucket = (days: number): string => {
+    if (days <= 0) return "current";
+    if (days <= 30) return "0-30";
+    if (days <= 60) return "31-60";
+    if (days <= 90) return "61-90";
+    return "90+";
+  };
 
-    const matchesStatus =
-      statusFilter === "ALL" ||
-      inv.status.toLowerCase() === statusFilter.toLowerCase() ||
-      inv.state.toLowerCase() === statusFilter.toLowerCase();
+  const RISK_WEIGHTS: Record<string, number> = {
+    critical: 4,
+    high: 3,
+    medium: 2,
+    low: 1,
+  };
 
-    const matchesEdge = edgeFilter === "ALL" || inv.edge_case === edgeFilter;
+  const filtered = invoices
+    .filter((inv) => {
+      const needle = search.toLowerCase().trim();
+      const matchesSearch =
+        needle === "" ||
+        inv.invoice_number.toLowerCase().includes(needle) ||
+        inv.buyer_id.toLowerCase().includes(needle) ||
+        inv.buyer_company_name.toLowerCase().includes(needle) ||
+        inv.buyer_contact_name.toLowerCase().includes(needle) ||
+        inv.invoice_id.toLowerCase().includes(needle);
 
-    return matchesSearch && matchesStatus && matchesEdge;
-  });
+      const matchesStatus =
+        statusFilter === "ALL" ||
+        inv.status.toLowerCase() === statusFilter.toLowerCase() ||
+        inv.state.toLowerCase() === statusFilter.toLowerCase();
+
+      const matchesAging =
+        agingFilter === "ALL" || getAgingBucket(inv.days_overdue) === agingFilter;
+
+      const matchesRisk =
+        riskFilter === "ALL" || inv.risk_tier.toLowerCase() === riskFilter.toLowerCase();
+
+      const matchesEdge = edgeFilter === "ALL" || inv.edge_case === edgeFilter;
+
+      return matchesSearch && matchesStatus && matchesAging && matchesRisk && matchesEdge;
+    })
+    .sort((a, b) => {
+      if (sortBy === "risk_desc") {
+        return (RISK_WEIGHTS[b.risk_tier.toLowerCase()] ?? 0) - (RISK_WEIGHTS[a.risk_tier.toLowerCase()] ?? 0);
+      }
+      if (sortBy === "days_desc") {
+        return b.days_overdue - a.days_overdue;
+      }
+      if (sortBy === "days_asc") {
+        return a.days_overdue - b.days_overdue;
+      }
+      if (sortBy === "amount_desc") {
+        return Number(b.outstanding_amount) - Number(a.outstanding_amount);
+      }
+      return 0;
+    });
 
   const getRiskBadge = (tier: string) => {
     switch (tier.toLowerCase()) {
@@ -112,14 +152,20 @@ export function InvoiceTableInteractive({ initialInvoices }: InvoiceTableInterac
     }
   };
 
-  const hasActiveFilters = search.trim() !== "" || statusFilter !== "ALL" || edgeFilter !== "ALL";
+  const hasActiveFilters =
+    search.trim() !== "" ||
+    statusFilter !== "ALL" ||
+    agingFilter !== "ALL" ||
+    riskFilter !== "ALL" ||
+    edgeFilter !== "ALL" ||
+    sortBy !== "default";
 
   return (
     <div className="space-y-4">
       {/* Controls & Filter Bar */}
       <div className="glass-panel rounded-3xl p-4 sm:p-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between border border-white/[0.08]">
         {/* Search */}
-        <div className="relative flex-1 max-w-md">
+        <div className="relative flex-1 max-w-xs">
           <svg className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
@@ -134,9 +180,62 @@ export function InvoiceTableInteractive({ initialInvoices }: InvoiceTableInterac
           />
         </div>
 
-        {/* State Filter */}
+        {/* Filter Dropdowns */}
         <div className="flex flex-wrap items-center gap-2">
-          <label htmlFor="state-filter-select" className="text-xs font-semibold text-slate-400">
+          {/* Aging Filter */}
+          <label htmlFor="aging-filter-select" className="text-xs font-semibold text-slate-400">
+            Ageing:
+          </label>
+          <select
+            id="aging-filter-select"
+            value={agingFilter}
+            onChange={(e) => setAgingFilter(e.target.value)}
+            className="rounded-xl border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-slate-200 focus:border-sky-500 focus:outline-none"
+          >
+            <option value="ALL">All Ageing</option>
+            <option value="current">Current (0d)</option>
+            <option value="0-30">0–30 Days</option>
+            <option value="31-60">31–60 Days</option>
+            <option value="61-90">61–90 Days</option>
+            <option value="90+">90+ Days</option>
+          </select>
+
+          {/* Risk Filter */}
+          <label htmlFor="risk-filter-select" className="text-xs font-semibold text-slate-400 ml-1">
+            Risk:
+          </label>
+          <select
+            id="risk-filter-select"
+            value={riskFilter}
+            onChange={(e) => setRiskFilter(e.target.value)}
+            className="rounded-xl border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-slate-200 focus:border-sky-500 focus:outline-none"
+          >
+            <option value="ALL">All Risk</option>
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+            <option value="critical">Critical</option>
+          </select>
+
+          {/* Sort By */}
+          <label htmlFor="sort-filter-select" className="text-xs font-semibold text-slate-400 ml-1">
+            Sort:
+          </label>
+          <select
+            id="sort-filter-select"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="rounded-xl border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-slate-200 focus:border-sky-500 focus:outline-none"
+          >
+            <option value="default">Default</option>
+            <option value="risk_desc">Risk: High → Low</option>
+            <option value="days_desc">Days: High → Low</option>
+            <option value="days_asc">Days: Low → High</option>
+            <option value="amount_desc">Amount: High → Low</option>
+          </select>
+
+          {/* State Filter */}
+          <label htmlFor="state-filter-select" className="text-xs font-semibold text-slate-400 ml-1">
             State:
           </label>
           <select
@@ -179,6 +278,9 @@ export function InvoiceTableInteractive({ initialInvoices }: InvoiceTableInterac
               onClick={() => {
                 setSearch("");
                 setStatusFilter("ALL");
+                setAgingFilter("ALL");
+                setRiskFilter("ALL");
+                setSortBy("default");
                 setEdgeFilter("ALL");
               }}
               className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-1.5 text-xs font-semibold text-rose-300 hover:bg-rose-500/20 transition-all"
