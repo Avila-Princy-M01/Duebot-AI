@@ -51,17 +51,24 @@ cd frontend && npm run dev
 
 ---
 
-## 🎬 Shot 2: Prioritization is a Rule, Not a Prompt (0:30 – 1:15)
+## 🎬 Shot 2: "Who Do We Chase First?" — The Engine Decides, Not the LLM (0:30 – 1:15)
 
 **On-Screen Action:**
-- Click **"Invoices"** in the sidebar navigation (`http://localhost:3000/invoices`).
-- Filter by aging bucket `31-60 Days` and sort by Risk Score.
-- Click on an invoice to open its detail drawer/page.
+1. Click **"Invoices"** in the sidebar → full ledger loads with all 260 invoices.
+2. Open the **Ageing** dropdown → select **"31–60 Days"** → table instantly filters to only the moderately delinquent cohort.
+3. Open the **Sort** dropdown → select **"Risk: High → Low"** → the highest-risk invoices surface to the top.
+4. Point to the **Risk Tier** badge on the top invoice (should show `Critical` or `High`).
+5. Click that invoice → detail page opens showing the full lifecycle timeline, buyer reliability tier, and contact history.
 
 **Spoken Script (Word-for-Word):**
-> *"Notice how receivables are triaged. Many AI collections tools pass an entire database dump to an LLM and ask it who to call. That is non-deterministic, expensive, and unsafe.*
+> *"So I'm a collections manager. I open DueBot and immediately ask: who do I chase first?*
 >
-> *In DueBot, prioritization is governed by pure Python functions in `engine/risk_tier.py` and `engine/aging.py`. A Tier-1 enterprise buyer who is three days late gets a gentle reminder; a chronically late account is escalated. The LLM is never consulted to decide who owes money or which bucket an invoice belongs to. The engine is pure, deterministic, and 100% test-covered."*
+> *Watch — I filter by the 31-to-60 day aging bucket. These are invoices that have been sitting unpaid for over a month. Then I sort by risk tier, highest first. Instantly, the most dangerous receivables float to the top.*
+>
+> *Now here's what matters: none of this filtering happened in an LLM. There's no prompt saying 'rank my invoices by urgency.' The aging bucket is a pure Python function — it takes the due date, subtracts today, and assigns a bucket. The risk tier is another deterministic function that considers the buyer's payment history and how far overdue they are. Every single classification you see on screen is computed by testable, auditable engine code — not a language model guess.*
+>
+> *Let me click into this top invoice so you can see the full picture — the buyer's reliability history, the contact timeline, and exactly which state this invoice is in right now."*
+
 
 ---
 
