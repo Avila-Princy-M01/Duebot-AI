@@ -51,23 +51,33 @@ cd frontend && npm run dev
 
 ---
 
-## 🎬 Shot 2: "Who Do We Chase First?" — The Engine Decides, Not the LLM (0:30 – 1:15)
+## 🎬 Shot 2: "Who Do We Chase First?" — The Engine Decides, Not the LLM (0:30 – 1:30)
 
 **On-Screen Action:**
 1. Click **"Invoices"** in the sidebar → full ledger loads with all 260 invoices.
 2. Open the **Ageing** dropdown → select **"31–60 Days"** → table instantly filters to only the moderately delinquent cohort.
 3. Open the **Sort** dropdown → select **"Risk: High → Low"** → the highest-risk invoices surface to the top.
 4. Point to the **Risk Tier** badge on the top invoice (should show `Critical` or `High`).
-5. Click that invoice → detail page opens showing the full lifecycle timeline, buyer reliability tier, and contact history.
+5. Click that invoice → detail page opens.
+6. On the detail page, slowly scroll through:
+   - **Header banner**: invoice number, buyer company name, current lifecycle state (`nudged` / `human_review`), risk tier, and days overdue.
+   - **Amount Breakdown panel**: Subtotal → GST @ 18% → Invoice Total → Amount Received → Outstanding balance.
+   - **Terms & Dates panel**: Issue date, Due date, Net payment terms, Buyer reliability tier (e.g. "chronic late — 40% on time"), and the Razorpay Payment Link ID.
+   - **Lifecycle Timeline** at the bottom: the full history of state transitions (`created → overdue → nudged → replied → human_review`).
+7. *(If the invoice is in `human_review` state)*: Point to the **Human Review Required** panel at the top — show the amber warning banner, the "Operator Reasoning" text field, and the two resolution buttons: **"✓ Mark Recovered"** and **"✕ Close / Write Off"**.
 
 **Spoken Script (Word-for-Word):**
 > *"So I'm a collections manager. I open DueBot and immediately ask: who do I chase first?*
 >
-> *Watch — I filter by the 31-to-60 day aging bucket. These are invoices that have been sitting unpaid for over a month. Then I sort by risk tier, highest first. Instantly, the most dangerous receivables float to the top.*
+> *Watch — I filter by the 31-to-60 day aging bucket. These are invoices sitting unpaid for over a month. Then I sort by risk, highest first. The most dangerous receivables float to the top instantly.*
 >
-> *Now here's what matters: none of this filtering happened in an LLM. There's no prompt saying 'rank my invoices by urgency.' The aging bucket is a pure Python function — it takes the due date, subtracts today, and assigns a bucket. The risk tier is another deterministic function that considers the buyer's payment history and how far overdue they are. Every single classification you see on screen is computed by testable, auditable engine code — not a language model guess.*
+> *Now here's what matters: none of this filtering happened in an LLM. The aging bucket is a pure Python function — due date minus today, assign a bucket. The risk tier is another deterministic function based on the buyer's payment history and how far past due they are. Every classification on screen is computed by testable, auditable engine code.*
 >
-> *Let me click into this top invoice so you can see the full picture — the buyer's reliability history, the contact timeline, and exactly which state this invoice is in right now."*
+> *Let me click into this top invoice. Look at what the detail page gives you — the full GST-compliant amount breakdown: subtotal, eighteen percent GST computed separately, total, what's been received, and the exact outstanding balance. Below that you see the buyer's reliability tier — this one is a chronic late payer with a 40% on-time rate — and the Razorpay Payment Link ID that was generated for this invoice.*
+>
+> *And scroll down — here's the full lifecycle timeline. You can see every state transition this invoice has gone through: when it was created, when it went overdue, when DueBot nudged the buyer, when the buyer replied, and why it ended up in human review.*
+>
+> *If this invoice is parked in human review, look — there's a dedicated panel right at the top. The operator writes their reasoning, and clicks either 'Mark Recovered' or 'Close / Write Off.' That decision gets logged to the SHA-256 audit chain. The human closes the loop, the machine doesn't guess."*
 
 
 ---
