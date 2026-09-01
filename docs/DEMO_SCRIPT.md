@@ -82,18 +82,25 @@ cd frontend && npm run dev
 
 ---
 
-## 🎬 Shot 3: Live Outreach & The Weekly Policy Cap (1:15 – 2:15)
+## 🎬 Shot 3: "Let's Actually Chase Someone" — Live Outreach & The Spam Guard (1:30 – 2:30)
 
 **On-Screen Action:**
-- On an overdue invoice, click **"Preview Nudge"** button. Show the drafted WhatsApp message containing the exact invoice number, outstanding amount, and generated Razorpay link.
-- Click **"Send Nudge"**.
-- Navigate to **"Simulator Inbox"** (`http://localhost:3000/inbox`) and show the outbound message received.
-- Switch back to invoice list, click an invoice that already has 3 touches, and click **"Preview Nudge"**.
+1. From the invoice detail page (still on the high-risk invoice from Shot 2), click **"Preview Nudge"** → a green panel appears showing the exact WhatsApp message DueBot has drafted: the buyer's name, invoice number, outstanding amount, and a live Razorpay Payment Link.
+2. Read out the drafted message on screen — point to the Razorpay link embedded in it.
+3. Click **"Send WhatsApp Nudge"** → the invoice state transitions from `overdue` to `nudged`.
+4. Click **"Inbox & Review"** in the sidebar → the Simulator Inbox opens showing the outbound WhatsApp message that was just delivered.
+5. Navigate back to **"Invoices"** → use the **Test Case** filter → select **"Contact Cap (Spam Guard)"** → click into one of these invoices.
+6. On that invoice's detail page, click **"Preview Nudge"** → the policy engine **blocks the nudge** with a red message: `MAX_CONTACTS_PER_WEEK reached`.
 
 **Spoken Script (Word-for-Word):**
-> *"Let's trigger an intervention. When we preview a nudge, DueBot's `can_contact()` policy gate evaluates three hard constraints: Is the buyer opted out? Is there an active payment promise window? And has this account reached its weekly frequency cap?*
+> *"Okay, so we've identified our highest-risk overdue invoice. Now let's actually do something about it.*
 >
-> *We click send. The message delivers via WhatsApp with an authentic Razorpay link. But look what happens if we attempt to nudge an invoice that has already received 3 touches this week: the policy engine immediately blocks the action with `MAX_CONTACTS_PER_WEEK reached`. The agent cannot be coerced into harassing a debtor, regardless of prompt manipulation."*
+> *I click Preview Nudge — and look at what DueBot drafts. It's not a generic 'pay your bill' template. It's a contextual WhatsApp message with this specific buyer's name, the exact invoice number, the outstanding amount down to the rupee, and — this is the Razorpay integration — a one-click payment link. UPI, netbanking, NEFT — the buyer picks. DueBot never touches the money. That's the non-custodial boundary.*
+>
+> *I click send. The message goes out, and the invoice state transitions from 'overdue' to 'nudged.' If I flip to the Simulator Inbox, there it is — the exact message, delivered.*
+>
+> *But here's the safety question every enterprise customer asks: what stops this thing from spamming my buyers? Let me show you. I'll open an invoice that's already been contacted three times this week. Watch — I click Preview Nudge and the system flat-out refuses. 'Maximum contacts per week reached.' That's not a suggestion from the LLM. That's a hard-coded policy cap in the engine. Three touches per week, period. No prompt injection, no override, no 'please try again.' The agent physically cannot harass a buyer."*
+
 
 ---
 
