@@ -264,12 +264,14 @@ export function InvoiceTableInteractive({ initialInvoices }: InvoiceTableInterac
           >
             <option value="ALL">All Cases</option>
             <option value="none">Standard Invoices</option>
-            <option value="broken_promise">Broken Promise</option>
-            <option value="disputed_balance">Disputed Balance</option>
-            <option value="opted_out_buyer">Opted-Out Buyer</option>
-            <option value="chronic_late_high_value">Chronic Late / High Value</option>
-            <option value="first_time_overdue_reliable">Reliable / First Overdue</option>
-            <option value="contact_cap_reached">Contact Cap (Spam Guard)</option>
+            <option value="ambiguous_reply">Ambiguous Reply (LLM Abstention)</option>
+            <option value="promise_then_silent">Broken Promise (Silent)</option>
+            <option value="disputed_invoice">Disputed Invoice</option>
+            <option value="opt_out_mid_sequence">Opted-Out Buyer</option>
+            <option value="partial_payment">Partial Payment</option>
+            <option value="paid_during_nudge_sequence">Paid During Sequence</option>
+            <option value="duplicate_invoice">Duplicate Invoice</option>
+            <option value="objection_extension">Objection / Extension</option>
           </select>
 
           {hasActiveFilters && (
