@@ -1,4 +1,4 @@
-# DueBot
+# DueBot — Autonomous B2B Revenue Recovery
 
 [![CI](https://github.com/Avila-Princy-M01/Duebot-AI/actions/workflows/ci.yml/badge.svg)](https://github.com/Avila-Princy-M01/Duebot-AI/actions/workflows/ci.yml)
 [![Live Demo](https://img.shields.io/badge/Live_Demo-Railway-00C7B7.svg?style=flat&logo=railway&logoColor=white)](https://independent-gentleness-production-d3fb.up.railway.app/)
@@ -8,14 +8,17 @@
 [![Next.js: 14](https://img.shields.io/badge/Next.js-14-black.svg)](https://nextjs.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-> 🚀 **Live Production Demo**: [https://independent-gentleness-production-d3fb.up.railway.app/](https://independent-gentleness-production-d3fb.up.railway.app/)
+An AI-assisted collections agent that recovers overdue B2B receivables without turning collections into uncontrolled automated spam.
 
-#### ⚡ Try These 3 Things in the Live Demo:
-1. **[Live Audit Ledger & Proof (`/audit`)](https://independent-gentleness-production-d3fb.up.railway.app/audit)**: Click **"Chain Verified ✓"** to inspect the mathematically verified SHA-256 Merkle chain linking all state transitions.
-2. **[Honest Recovery & Baselines (`/metrics`)](https://independent-gentleness-production-d3fb.up.railway.app/metrics)**: Toggle between `no_agent` (74.4% organic self-cure), `naive_cadence` (spam dunning), and `duebot` (+4.9pp honest lift with 61.5% fewer messages).
-3. **[Cryptographic Verify API (`/api/audit/verify`)](https://duebot-ai-production.up.railway.app/api/audit/verify)**: Query the live endpoint to inspect the cryptographic JSON proof walking the hash chain from genesis root to chain tip.
+| +4.9pp recovery lift vs. no-agent | 61.5% fewer messages vs. naive cadence | 0 disputed outreach | LLM cannot authorize financial actions | SHA-256 hash chain |
+| :---: | :---: | :---: | :---: | :---: |
 
-An autonomous, policy-gated collections agent for overdue **B2B receivables**, built for the Razorpay AI Buildathon 2026 (Track 03 — AI Revenue Recovery).
+Evaluated across 710+ simulated invoices and 10 deterministic seeds. Built for the Razorpay AI Buildathon 2026 (Track 03 — AI Revenue Recovery).
+
+> 🚀 **Live Demo**: [https://independent-gentleness-production-d3fb.up.railway.app/](https://independent-gentleness-production-d3fb.up.railway.app/)
+> 1. **[Audit Ledger](https://independent-gentleness-production-d3fb.up.railway.app/audit)** — Click "Chain Verified ✓" to inspect the SHA-256 tamper-evident hash chain
+> 2. **[Baselines](https://independent-gentleness-production-d3fb.up.railway.app/metrics)** — Toggle `no_agent` / `naive_cadence` / `duebot`
+> 3. **[Verify API](https://duebot-ai-production.up.railway.app/api/audit/verify)** — Cryptographic JSON proof of chain integrity
 
 ---
 
@@ -42,6 +45,23 @@ DueBot was built and evaluated against a real 3-way baseline (`no_agent` organic
 
 ---
 
+## Why DueBot is different
+
+Most automated revenue-recovery systems optimize for *more recovery attempts*.
+DueBot optimizes for *recovery without unnecessary customer contact*.
+
+DueBot separates **understanding** from **authorization**:
+
+- The **LLM** interprets buyer responses and extracts structured intent.
+- **Deterministic policy code** decides whether an action is permitted.
+- Payment actions are **never** authorized by the LLM.
+- Promise-to-pay commitments **change the collection state**.
+- Disputes and opt-outs **freeze automated outreach**.
+- Contact caps **prevent uncontrolled messaging**.
+- Every action is recorded in a **tamper-evident audit chain**.
+
+---
+
 ## Architecture
 
 ```mermaid
@@ -63,7 +83,22 @@ flowchart LR
 
 The LLM never decides whether to act. Pure deterministic functions in `backend/engine/policy.py` and `backend/engine/states.py` govern all transitions and actions.
 
-Full design: [ARCHITECTURE.md](ARCHITECTURE.md) · Architecture FAQ: [docs/DESIGN_FAQ.md](docs/DESIGN_FAQ.md) · Evaluation Methodology: [docs/EVALUATION_METHODOLOGY.md](docs/EVALUATION_METHODOLOGY.md) · Demo Walkthrough: [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md).
+Full design: [ARCHITECTURE.md](ARCHITECTURE.md) · Architecture FAQ: [docs/DESIGN_FAQ.md](docs/DESIGN_FAQ.md) · Evaluation Methodology: [docs/EVALUATION_METHODOLOGY.md](docs/EVALUATION_METHODOLOGY.md).
+
+### LLM authority boundary
+
+The LLM is not the decision-maker.
+
+| The LLM **may**: | The LLM **may not**: |
+|:---|:---|
+| Interpret buyer responses | Initiate payment collection |
+| Classify intent | Decide escalation |
+| Extract promise-to-pay information | Override contact limits |
+| Generate draft responses | Ignore disputes or opt-outs |
+| | Modify financial state |
+| | Authorize payment actions |
+
+All executable actions pass through deterministic policy and state-machine checks.
 
 ---
 
@@ -196,6 +231,21 @@ We make the system boundaries explicit and transparent:
 
 ---
 
+## Failure handling
+
+| Failure / Event | DueBot response |
+|:---|:---|
+| Buyer disputes invoice | Freeze automated collection → `HUMAN_REVIEW` |
+| Buyer promises payment | Track commitment, suppress unnecessary reminders |
+| Payment received | Stop collection immediately → `RECOVERED` |
+| Contact limit reached (3/week) | Stop outreach → `ESCALATED` |
+| Low-confidence interpretation (<0.7) | Escalate to human with reasoning attached |
+| Duplicate webhook | Idempotent handling via `(invoice_id, attempt_number)` key |
+| Audit record modified | Hash-chain verification fails, tampering detected |
+| Buyer opts out | Irreversible freeze — no code path re-enters nudge cycle |
+
+---
+
 ## Evaluation Benchmark & Robustness
 
 Reproducible via `python scripts/run_eval.py` and `python scripts/run_multi_seed_eval.py` driving the **real deterministic engine** across simulated timelines:
@@ -227,7 +277,15 @@ Reproducible via `python scripts/run_eval.py` and `python scripts/run_multi_seed
 
 ---
 
-## Design Decisions (Why This, Not That)
+## Design principles
+
+1. **AI proposes, policy disposes.** LLMs interpret unstructured responses; deterministic code controls actions.
+2. **Stop when the customer has paid.** Successful payment immediately terminates recovery workflows.
+3. **A promise changes behavior.** Promise-to-pay commitments suppress unnecessary follow-ups.
+4. **Disputes are not collection opportunities.** Disputed invoices are routed away from automated collection.
+5. **Every action should be explainable.** Decisions are persisted in a tamper-evident audit chain.
+
+### Design Decisions (Why This, Not That)
 
 | Choice | Why |
 |--------|-----|
